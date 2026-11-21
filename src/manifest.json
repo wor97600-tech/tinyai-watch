@@ -1,0 +1,36 @@
+{
+  "package": "com.tinyai.lab",
+  "name": "TinyAI Lab",
+  "versionName": "0.9.20",
+  "versionCode": 59,
+  "appCategory": [
+    "utilities"
+  ],
+  "icon": "/assets/images/logo.png",
+  "features": [
+    {
+      "name": "blueos.storage.storage"
+    },
+    {
+      "name": "blueos.storage.file"
+    }
+  ],
+  "deviceTypeList": [
+    "watch-round",
+    "watch-square"
+  ],
+  "config": {
+    "designWidth": 466
+  },
+  "router": {
+    "entry": "pages/Home",
+    "pages": {
+      "pages/Home": {
+        "component": "index"
+      }
+    }
+  },
+  "display": {
+    "backgroundColor": "#0b0f14"
+  }
+}

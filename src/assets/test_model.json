@@ -1,0 +1,48 @@
+{
+  "format": "tinyai-model-json",
+  "version": 1,
+  "name": "TEST_MODEL_HANDCRAFTED_V1",
+  "trained": false,
+  "note": "Hand-crafted weights for engine validation only. This is NOT a trained model.",
+  "dims": {
+    "input": 6,
+    "hidden": 8,
+    "output": 5
+  },
+  "labels": ["你", "好", "世", "界", "机"],
+  "weights": {
+    "inputHidden": [
+      1, 0, 0, 0, 0, 0,
+      0, 1, 0, 0, 0, 0,
+      0, 0, 1, 0, 0, 0,
+      0, 0, 0, 1, 0, 0,
+      0, 0, 0, 0, 1, 0,
+      0, 0, 0, 0, 0, 1,
+      0.5, 0.5, 0.5, 0.5, 0.5, 0.5,
+      -0.5, -0.5, -0.5, -0.5, -0.5, -0.5
+    ],
+    "hiddenBias": [0, 0, 0, 0, 0, 0, 0, 0],
+    "hiddenOutput": [
+      2, 0, 0, 0, 0, 0, 0.5, 0,
+      0, 2, 0, 0, 0, 0, 0.5, 0,
+      0, 0, 2, 0, 0, 0, 0.5, 0,
+      0, 0, 0, 2, 0, 0, 0.5, 0,
+      0, 0, 0, 0, 2, 0, 0.5, 0
+    ],
+    "outputBias": [0, 0, 0, 0, 0]
+  },
+  "testCases": [
+    {
+      "input": [1, 0, 0, 0, 0, 0],
+      "expectedLabel": "你"
+    },
+    {
+      "input": [0, 1, 0, 0, 0, 0],
+      "expectedLabel": "好"
+    },
+    {
+      "input": [0, 0, 0, 0, 1, 0],
+      "expectedLabel": "机"
+    }
+  ]
+}

@@ -1,0 +1,26 @@
+# 构建产物（由 BlueOS Studio 生成，不入库）
+build/
+dist/
+*.rpk
+
+# 本地临时脚本与缓存
+.tmp/
+.preview.json
+
+# 签名私钥，绝对不能提交
+sign/
+*.pem
+*.p12
+*.jks
+
+# 历史遗留的 float32 打包权重（运行时只用 char_model_q.bin，这个文件 5 MB 且无人引用）
+src/assets/char_model.js
+
+# 依赖
+node_modules/
+.cache/
+
+# 系统文件
+Thumbs.db
+Desktop.ini
+.DS_Store

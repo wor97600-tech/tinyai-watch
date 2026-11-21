@@ -1,0 +1,1842 @@
+<script>
+  import { parseBinaryModel } from '../../ai/model_loader.js'
+  import { CharPredictor } from '../../ai/char_predictor.js'
+  import knowledgeEntries from '../../assets/knowledge_base.js'
+  import dailyEntries from '../../assets/daily_kb.js'
+  import dailyExtraEntries from '../../assets/daily_kb_extra.js'
+  import { SimpleKnowledgeBase } from '../../ai/simple_kb.js'
+  import { ReplyEngine, isCreativeRequest } from '../../ai/reply_engine.js'
+  import { runBenchmarkAsync, cancelBenchmark, formatBenchmark } from '../../ai/benchmark.js'
+  import { fileReadArrayBuffer, storageGet, storageSet } from '../../platform/blueos_io.js'
+  import charModelQMeta from '../../assets/char_model_q_meta.js'
+  import { getCandidates } from '../../input/pinyin_engine.js'
+
+  const CHAT_HISTORY_KEY = 'tinyai_chat_history_v1'
+  const MAX_MESSAGES = 24
+  const KEYBOARD_SOURCE_KEY = 'tinyai_keyboard_source_v1'
+
+  let knowledgeBase = null
+  let charPredictor = null
+  let charLoadPromise = null
+  let replyEngine = null
+  let saveTimer = null
+  // 回复看门狗：thinking 卡死时兜底复位，否则整页会变成“发了没反应”。
+  let replyWatchdog = null
+
+  function formatCount(value) {
+    const text = String(value)
+    let out = ''
+    for (let i = 0; i < text.length; i++) {
+      if (i > 0 && (text.length - i) % 3 === 0) {
+        out += ','
+      }
+      out += text[i]
+    }
+    return out
+  }
+
+  // 系统输入法回调的数据形状在不同固件上不一致：可能是字符串、{value}、
+  // {detail:{value}} 或事件对象。这里逐个兜底，认不出来就返回 null，避免清空已有内容。
+  function extractInputValue(event) {
+    if (typeof event === 'string') {
+      return event
+    }
+    if (!event) {
+      return null
+    }
+    if (typeof event.value === 'string') {
+      return event.value
+    }
+    if (event.detail && typeof event.detail.value === 'string') {
+      return event.detail.value
+    }
+    if (event.target && typeof event.target.value === 'string') {
+      return event.target.value
+    }
+    return null
+  }
+
+  export default {
+    data: {
+      messages: [],
+      nextId: 1,
+      draftText: '',
+      draftPreview: '',
+      thinking: false,
+      pausedReply: false,
+      streamingText: '',
+      streamingMeta: '',
+      statusText: '本地模型准备中...',
+      errorMessage: '',
+      toyMode: false,
+      kbReady: false,
+      charReady: false,
+      kbErrorMessage: '',
+      charErrorMessage: '',
+      scrollTop: 0,
+      showKeyboard: false,
+      useOfficialKeyboard: false,
+      // 原生输入框是否挂载。发完一条会先卸掉再挂回来，
+      // 逼固件重建节点，框里就不会留着上一句。
+      inputActive: true,
+      // 清空输入框的瞬间屏蔽 oninput/onchange 同步。
+      suppressInputSync: false,
+      kbSourceLabel: '键盘：离线',
+      kbMode: 'ZH',
+      kbPage: 'letters',
+      typedPinyin: '',
+      cand0: '',
+      cand1: '',
+      cand2: '',
+      cand3: '',
+      cand4: '',
+      cand5: '',
+      cand6: '',
+      cand7: '',
+      cand8: '',
+      cand9: '',
+      cand10: '',
+      cand11: '',
+      candExpanded: false,
+      hasMore: false,
+      row1: ['q', 'w', 'e', 'r', 't', 'y', 'u', 'i', 'o', 'p'],
+      row2: ['a', 's', 'd', 'f', 'g', 'h', 'j', 'k', 'l'],
+      row3: ['，', 'z', 'x', 'c', 'v', 'b', 'n', 'm', '。'],
+      numRow1: ['1', '2', '3', '4', '5', '6', '7', '8', '9', '0'],
+      numRow2: ['-', '/', ':', ';', '(', ')', '¥', '&', '@', '*'],
+      numRow3: ['，', '。', '？', '！', '、', '…', '#', '%', '~', '+'],
+    },
+
+    onInit() {
+      const self = this
+      replyEngine = new ReplyEngine({
+        knowledgeBase: knowledgeBase,
+        predictor: charPredictor,
+        now: function () {
+          return Date.now()
+        },
+      })
+      this.updateStatus()
+      this.loadChatHistory()
+      this.loadKeyboardSource()
+      // 轻量检索只持有条目文本，构建是常数级开销，可以放心在启动时建。
+      this.loadKnowledgeBase()
+    },
+
+    // 熄屏 / 切到后台：把会持续占资源的东西全部收掉。
+    // 之前没有这个处理，熄屏后系统输入法会话和流式定时器还挂在后台，
+    // 手表过一会儿就整机卡死。
+    onHide() {
+      this.pausedReply = this.thinking
+      this.disarmReplyWatchdog()
+      try {
+        if (replyEngine) {
+          replyEngine.cancelStream()
+        }
+      } catch (error) {}
+      if (this.thinking) {
+        this.thinking = false
+        this.streamingText = ''
+        this.streamingMeta = ''
+      }
+      this.showKeyboard = false
+      this.typedPinyin = ''
+      this.clearCandidates()
+      this.releaseOfficialInputFocus()
+    },
+
+    // 回到前台：输入法会话已经没了，重新接一次输入框。
+    onShow() {
+      if (this.useOfficialKeyboard) {
+        this.inputActive = true
+        this.suppressInputSync = false
+        this.seedOfficialInput(this.draftText || '')
+      }
+      if (this.pausedReply) {
+        this.pausedReply = false
+        this.addMessage('ai', '刚才切走了，那条我没说完，再发一次？', '切后台')
+        this.scrollToBottom()
+      }
+    },
+
+    updateStatus() {
+      const kb = this.kbReady
+        ? '知识库就绪'
+        : this.kbErrorMessage
+          ? '知识库失败'
+          : '知识库待用'
+      const model = this.charReady
+        ? 'int8 模型就绪'
+        : this.charErrorMessage
+          ? '模型失败'
+          : '模型待用'
+      this.statusText =
+        '本地 · ' + kb + ' · ' + model + (this.toyMode ? ' · 纯模型' : '')
+    },
+
+    toggleToyMode(text) {
+      const self = this
+      const enable = /^(纯模型|玩具模式|慢速模式)$/.test(text)
+      this.addMessage('user', text, '')
+      this.errorMessage = ''
+      if (!enable) {
+        if (replyEngine) {
+          replyEngine.setToyMode(false)
+        }
+        this.toyMode = false
+        this.updateStatus()
+        this.addMessage('ai', '已回到正常模式，知识库和规则重新接管。', '纯模型 · 模式切换')
+        this.scrollToBottom()
+        return
+      }
+      this.thinking = true
+      this.armReplyWatchdog()
+      this.scrollToBottom()
+      this.loadCharModel().then(function (ok) {
+        self.disarmReplyWatchdog()
+        self.thinking = false
+        if (!ok || !charPredictor || !replyEngine) {
+          self.addMessage('ai', '模型没加载成功，进不了纯模型模式。', '纯模型 · 加载失败')
+          self.updateStatus()
+          return
+        }
+        replyEngine.setToyMode(true)
+        self.toyMode = true
+        self.updateStatus()
+        // 出字速度跟着模型规模算：手表端约 7 万次乘加/秒，别写死。
+        const macsPerChar = charModelQMeta.meta.macsPerChar || 74432
+        const secondsPerChar = Math.max(
+          0.5,
+          Math.round((macsPerChar / 70000) * 10) / 10
+        )
+        self.addMessage(
+          'ai',
+          '已进入纯模型模式：之后每条消息都交给本地 ' +
+            formatCount(charModelQMeta.meta.parameterCount) +
+            ' 参数神经网络续写，手表上约 ' +
+            secondsPerChar +
+            ' 秒一个字，10 个字大概 ' +
+            Math.round(secondsPerChar * 10) +
+            ' 秒。发「正常模式」退出。',
+          '纯模型 · 模式切换'
+        )
+        self.scrollToBottom()
+      })
+    },
+
+    switchToNormal(text) {
+      this.disarmReplyWatchdog()
+      if (replyEngine) {
+        replyEngine.cancelStream()
+        replyEngine.setToyMode(false)
+      }
+      this.toyMode = false
+      this.thinking = false
+      this.streamingText = ''
+      this.streamingMeta = ''
+      this.addMessage('user', text, '')
+      this.updateStatus()
+      this.addMessage('ai', '已回到正常模式，知识库和规则重新接管。', '模式切换')
+      this.scrollToBottom()
+    },
+
+    loadKnowledgeBase() {
+      if (this.kbReady) {
+        return
+      }
+      try {
+        knowledgeBase = new SimpleKnowledgeBase(
+          knowledgeEntries.concat(dailyEntries, dailyExtraEntries)
+        )
+        if (replyEngine) {
+          replyEngine.setKnowledgeBase(knowledgeBase)
+        }
+        this.kbReady = true
+        this.kbErrorMessage = ''
+        this.updateStatus()
+      } catch (error) {
+        this.kbErrorMessage = error && error.message ? error.message : String(error)
+        this.errorMessage = '知识库初始化失败：' + this.kbErrorMessage
+        this.updateStatus()
+      }
+    },
+
+    loadCharModel() {
+      if (this.charReady) {
+        return Promise.resolve(true)
+      }
+      if (charLoadPromise) {
+        return charLoadPromise.then(function (ok) {
+          if (ok && charPredictor && replyEngine) {
+            replyEngine.setPredictor(charPredictor)
+          }
+          return ok
+        })
+      }
+      const self = this
+      charLoadPromise = fileReadArrayBuffer('/assets/char_model_q.bin', 2000)
+        .then(function (data) {
+          const bytes = data && data.buffer ? data.buffer : data
+          return parseBinaryModel(bytes)
+        })
+
+        .then(function (model) {
+          model.meta = charModelQMeta.meta
+          model.name = charModelQMeta.name
+          model.trained = charModelQMeta.trained
+          model.format = charModelQMeta.format
+          charPredictor = new CharPredictor(model, charModelQMeta.meta)
+          if (replyEngine) {
+            replyEngine.setPredictor(charPredictor)
+          }
+          self.charReady = true
+          self.charErrorMessage = ''
+          self.updateStatus()
+          return true
+        })
+        .catch(function (error) {
+          self.charErrorMessage = error && error.message ? error.message : String(error)
+          self.errorMessage = '字符模型加载失败：' + self.charErrorMessage
+          charLoadPromise = null
+          self.updateStatus()
+          return false
+        })
+      return charLoadPromise
+    },
+
+    loadChatHistory() {
+      const self = this
+      storageGet(CHAT_HISTORY_KEY, '')
+        .then(function (value) {
+          if (typeof value !== 'string' || value.length === 0) {
+            return
+          }
+          try {
+            const list = JSON.parse(value)
+            if (!list || typeof list.length !== 'number' || list.length === 0) {
+              return
+            }
+            const out = []
+            for (let i = 0; i < list.length; i++) {
+              const item = list[i]
+              if (
+                !item ||
+                (item.role !== 'user' && item.role !== 'ai') ||
+                typeof item.text !== 'string'
+              ) {
+                continue
+              }
+              out.push({
+                id: out.length + 1,
+                role: item.role,
+                text: item.text,
+                meta: typeof item.meta === 'string' ? item.meta : '',
+              })
+            }
+            if (out.length > 0 && self.messages.length === 0) {
+              self.messages = out
+              self.nextId = out.length + 1
+              self.scrollToBottom()
+            }
+          } catch (error) {}
+        })
+        .catch(function () {})
+    },
+
+    saveChatHistory() {
+      const list = []
+      const start = Math.max(0, this.messages.length - 20)
+      for (let i = start; i < this.messages.length; i++) {
+        const message = this.messages[i]
+        list.push({
+          role: message.role,
+          text: message.text,
+          meta: message.meta || '',
+        })
+      }
+      storageSet(CHAT_HISTORY_KEY, JSON.stringify(list)).catch(function () {})
+    },
+
+    // 每条消息都写一次存储太重，合并到 250ms 后写。
+    scheduleSave() {
+      const self = this
+      if (saveTimer) {
+        clearTimeout(saveTimer)
+      }
+      saveTimer = setTimeout(function () {
+        saveTimer = null
+        self.saveChatHistory()
+      }, 250)
+    },
+
+    addMessage(role, text, meta) {
+      const message = {
+        id: this.nextId++,
+        role: role,
+        text: text,
+        meta: meta || '',
+      }
+      let next = this.messages.slice()
+      next.push(message)
+      // 列表无限长会让手表越用越慢直到闪退，只保留最近 40 条。
+      if (next.length > MAX_MESSAGES) {
+        next = next.slice(next.length - MAX_MESSAGES)
+      }
+      this.messages = next
+      this.scheduleSave()
+      this.scrollToBottom()
+    },
+
+    onDestroy() {
+      cancelBenchmark()
+      this.disarmReplyWatchdog()
+      if (replyEngine) {
+        replyEngine.cancelStream()
+      }
+      if (saveTimer) {
+        clearTimeout(saveTimer)
+        saveTimer = null
+        this.saveChatHistory()
+      }
+    },
+
+    scrollToBottom() {
+      // 以前这里塞 100000，等于让原生 scroll 滚到一个不存在的超大偏移，
+      // 熄屏时容易把渲染线程拖住。按条数估一个合理上限就够滚到底了。
+      const target = 200 + this.messages.length * 140
+      this.scrollTop = target
+      const self = this
+      setTimeout(function () {
+        self.scrollTop = target + 1
+      }, 30)
+    },
+
+    // 两种键盘共用一个入口：官方模式下输入栏本身就是原生输入框，
+    // 用户直接点它就会弹系统输入法，这里什么都不用做。
+    openKeyboard() {
+      if (this.useOfficialKeyboard) {
+        return
+      }
+      this.showKeyboard = true
+      this.updateDraftPreview()
+      this.refreshCandidates()
+    },
+
+    // 键盘来源设置持久化，下次打开保持上次的选择。
+    loadKeyboardSource() {
+      const self = this
+      storageGet(KEYBOARD_SOURCE_KEY, 'self')
+        .then(function (value) {
+          self.applyKeyboardSource(value === 'official', false)
+        })
+        .catch(function () {})
+    },
+
+    setKeyboardSource(official) {
+      this.applyKeyboardSource(official === true, true)
+    },
+
+    // 只有一个切换键：按一下在「离线键盘 / 官方键盘」之间来回切。
+    toggleKeyboardSource() {
+      this.setKeyboardSource(!this.useOfficialKeyboard)
+    },
+
+    applyKeyboardSource(official, persist) {
+      // 切走之前先把没上屏的拼音落成正文，避免白打。
+      this.commitPinyinAsText()
+      // 切回离线键盘前，把系统输入法里已经打好的字收进正文。
+      if (this.useOfficialKeyboard) {
+        const live = this.readOfficialInput()
+        if (typeof live === 'string' && live.trim().length > 0) {
+          this.draftText = live.slice(0, 60)
+          this.updateDraftPreview()
+        }
+      }
+      // 切回离线键盘：趁输入框还在显示，先把系统输入法收掉，再隐藏它。
+      if (this.useOfficialKeyboard && official !== true) {
+        this.releaseOfficialInputFocus()
+      }
+      this.useOfficialKeyboard = official === true
+      if (this.useOfficialKeyboard) {
+        this.showKeyboard = false
+        this.typedPinyin = ''
+        this.clearCandidates()
+        this.inputActive = true
+        // 切到官方键盘：把已有的正文塞进原生框（只在挂载时写一次）。
+        this.seedOfficialInput(this.draftText || '')
+      }
+      this.kbSourceLabel = this.useOfficialKeyboard ? '键盘：官方' : '键盘：离线'
+      if (persist) {
+        storageSet(
+          KEYBOARD_SOURCE_KEY,
+          this.useOfficialKeyboard ? 'official' : 'self'
+        ).catch(function () {})
+      }
+    },
+
+    // 官方键盘回调：把系统输入法里的文字同步到正文。
+    onInputChange(event) {
+      // 重建输入框时固件可能补一个 onchange，里面还是刚才那句旧文字，
+      // 不挡掉的话草稿会被“复活”，看起来就像没发出去。
+      if (this.suppressInputSync) {
+        return
+      }
+      const value = extractInputValue(event)
+      if (value === null) {
+        return
+      }
+      const next = value.slice(0, 60)
+      // 值没变就不写 state：手表上每次重渲染都可能打断系统输入法。
+      if (next === this.draftText) {
+        return
+      }
+      this.draftText = next
+      this.updateDraftPreview()
+    },
+
+    // 切到官方键盘时把正文写进原生框，只写这一次（之后完全不管它）。
+    seedOfficialInput(text) {
+      const self = this
+      const apply = function () {
+        try {
+          if (self.$element) {
+            const el = self.$element('chat-input')
+            if (el && typeof el.value === 'string') {
+              el.value = text
+            }
+          }
+        } catch (error) {}
+      }
+      apply()
+      // 模板挂载是异步的，再补一次。
+      setTimeout(apply, 80)
+    },
+
+    // 原生输入框只在“发送完 / 清空 / 切模式”时写一次，平时绝不回写，
+    // 否则系统输入法会话会被打断，第二次就点不出来了。
+    clearOfficialInput() {
+      const self = this
+      // 清空过程中先屏蔽同步，避免 onchange 把刚才那句旧文字又塞回草稿。
+      this.suppressInputSync = true
+      const run = function () {
+        try {
+          if (!self.$element) {
+            return
+          }
+          const el = self.$element('chat-input')
+          if (!el) {
+            return
+          }
+          // 先清空再失焦：顺序反了 onblur 会把旧文字同步回正文。
+          if (typeof el.value === 'string' && el.value.length > 0) {
+            el.value = ''
+          }
+          // 已经切走官方键盘就别再碰它了，隐藏状态下失焦容易出问题。
+          if (self.useOfficialKeyboard && typeof el.blur === 'function') {
+            el.blur()
+          }
+        } catch (error) {}
+      }
+      run()
+      // 重渲染后组件实例可能换新的，补一次，确保焦点真的放掉。
+      setTimeout(run, 60)
+      // 光改 value，手表固件有时不刷新输入法的显示：发完一条框里还留着上一句。
+      // 干脆把这个原生输入框整个卸掉再挂回来，新节点必然是空的。
+      if (this.useOfficialKeyboard) {
+        this.inputActive = false
+        setTimeout(function () {
+          if (!self.useOfficialKeyboard) {
+            self.suppressInputSync = false
+            return
+          }
+          self.inputActive = true
+          self.seedOfficialInput('')
+          setTimeout(function () {
+            self.suppressInputSync = false
+          }, 120)
+        }, 80)
+      } else {
+        setTimeout(function () {
+          self.suppressInputSync = false
+        }, 120)
+      }
+    },
+
+    // 发完一条就把系统输入法收起来。
+    // 不放手的话输入框一直拿着焦点，第二次点它不会再触发 focus，
+    // 系统键盘就不弹了 —— 表现就是“只有第一次能输入”。
+    releaseOfficialInputFocus() {
+      try {
+        if (this.$element) {
+          const el = this.$element('chat-input')
+          if (el && typeof el.blur === 'function') {
+            el.blur()
+          }
+        }
+      } catch (error) {}
+    },
+
+    // 发送前再读一次原生输入框，防止用户没点“完成”就按发送。
+    readOfficialInput() {
+      try {
+        if (this.$element) {
+          const el = this.$element('chat-input')
+          if (el && typeof el.value === 'string') {
+            return el.value
+          }
+        }
+      } catch (error) {}
+      return null
+    },
+
+    // 顶部预览只有一行，长文本只留末尾，避免截断看不出打了什么。
+    updateDraftPreview() {
+      const text = this.draftText || ''
+      // 预览一行 220px、字号 18，最多放 12 个全角字，留一位给省略号。
+      this.draftPreview = text.length > 10 ? '…' + text.slice(text.length - 10) : text
+    },
+
+    closeKeyboard() {
+      this.showKeyboard = false
+      this.typedPinyin = ''
+      this.clearCandidates()
+    },
+
+    clearCandidates() {
+      for (let i = 0; i < 12; i++) {
+        this['cand' + i] = ''
+      }
+      this.hasMore = false
+      this.candExpanded = false
+    },
+
+    // 一次取 12 个：前 3 个常驻候选条，剩下的点“更多”展开挑同音字。
+    refreshCandidates() {
+      // 词库出问题也只让候选空着，不能让整个页面跟着崩。
+      let list = []
+      if (this.typedPinyin) {
+        try {
+          list = getCandidates(this.typedPinyin, 12)
+        } catch (error) {
+          this.errorMessage =
+            '候选失败：' + (error && error.message ? error.message : String(error))
+          list = []
+        }
+      }
+      for (let i = 0; i < 12; i++) {
+        this['cand' + i] = list[i] || ''
+      }
+      this.hasMore = list.length > 3
+      this.candExpanded = false
+    },
+
+    expandCandidates() {
+      if (this.hasMore) {
+        this.candExpanded = true
+      }
+    },
+
+    collapseCandidates() {
+      this.candExpanded = false
+    },
+
+    appendText(text) {
+      if (!text) {
+        return
+      }
+      let next = (this.draftText || '') + text
+      if (next.length > 60) {
+        next = next.slice(0, 60)
+      }
+      this.draftText = next
+      this.updateDraftPreview()
+    },
+
+    pressKey(key) {
+      if (!key) {
+        return
+      }
+      if (this.kbPage !== 'letters' || this.kbMode === 'EN') {
+        this.appendText(key)
+        return
+      }
+      if (this.typedPinyin.length >= 24) {
+        return
+      }
+      this.typedPinyin = this.typedPinyin + key
+      this.refreshCandidates()
+    },
+
+    pickCandidate(text) {
+      if (!text) {
+        return
+      }
+      this.appendText(text)
+      this.typedPinyin = ''
+      this.candExpanded = false
+      this.clearCandidates()
+    },
+
+    // 拼音还没上屏时点拼音条，把字母直接当正文，避免输入法把人困住。
+    commitPinyinAsText() {
+      if (!this.typedPinyin) {
+        return
+      }
+      this.appendText(this.typedPinyin)
+      this.typedPinyin = ''
+      this.clearCandidates()
+    },
+
+    pressSpace() {
+      if (this.typedPinyin && this.cand0) {
+        this.pickCandidate(this.cand0)
+        return
+      }
+      if (this.typedPinyin) {
+        this.commitPinyinAsText()
+        return
+      }
+      this.appendText(' ')
+    },
+
+    pressDelete() {
+      if (this.typedPinyin) {
+        this.typedPinyin = this.typedPinyin.slice(0, this.typedPinyin.length - 1)
+        this.refreshCandidates()
+        return
+      }
+      const text = this.draftText || ''
+      if (text.length === 0) {
+        return
+      }
+      this.draftText = text.slice(0, text.length - 1)
+      this.updateDraftPreview()
+    },
+
+    toggleKbMode() {
+      this.kbMode = this.kbMode === 'ZH' ? 'EN' : 'ZH'
+      if (this.kbMode === 'EN') {
+        this.commitPinyinAsText()
+      }
+    },
+
+    toggleKbPage() {
+      // 切页前先把没上屏的拼音落成正文，避免白打。
+      this.commitPinyinAsText()
+      this.kbPage = this.kbPage === 'letters' ? 'numbers' : 'letters'
+      this.typedPinyin = ''
+      this.candExpanded = false
+      this.clearCandidates()
+    },
+
+    sendFromKeyboard() {
+      if (this.typedPinyin && this.cand0) {
+        this.pickCandidate(this.cand0)
+      } else if (this.typedPinyin) {
+        this.commitPinyinAsText()
+      }
+      const text = this.draftText
+      this.showKeyboard = false
+      this.typedPinyin = ''
+      this.clearCandidates()
+      this.submitText(text)
+    },
+
+    sendMessage() {
+      let text = this.draftText
+      if (this.useOfficialKeyboard) {
+        const live = this.readOfficialInput()
+        if (typeof live === 'string' && live.trim().length > 0) {
+          text = live
+        }
+      }
+      this.submitText(text)
+    },
+
+    submitText(raw) {
+      let text = (raw || '').trim()
+      if (text.length === 0) {
+        return
+      }
+      if (text.length > 60) {
+        text = text.slice(0, 60)
+      }
+      if (this.thinking) {
+        // 上一条还没结束。以前这里直接 return，表现就是“输入没反应”，
+        // 现在明确告诉用户，同时不吞掉已经打的字。
+        this.errorMessage = '上一条还在说，等它说完再发'
+        return
+      }
+      this.draftText = ''
+      this.updateDraftPreview()
+      if (this.useOfficialKeyboard) {
+        this.clearOfficialInput()
+      }
+      if (/^(正常模式|退出玩具|退出纯模型)$/i.test(text)) {
+        if (this.toyMode) {
+          this.switchToNormal(text)
+          return
+        }
+        this.toggleToyMode('正常模式')
+        return
+      }
+      if (/^(纯模型|玩具模式|慢速模式)$/.test(text)) {
+        this.toggleToyMode(text)
+        return
+      }
+      if (/^(跑分|基准|bench)$/i.test(text)) {
+        // 隐藏的速度探针：只在本机跑矩阵乘，不上报。
+        this.addMessage('user', text, '')
+        this.errorMessage = ''
+        this.thinking = false
+        this.scrollToBottom()
+        const self = this
+        setTimeout(function () {
+          self.runBench()
+        }, 30)
+        return
+      }
+      this.errorMessage = ''
+      this.addMessage('user', text, '')
+      this.thinking = true
+      this.armReplyWatchdog()
+      this.scrollToBottom()
+
+      const self = this
+      // 只有明确要求慢速推理或明确写诗/故事/续写时，才懒加载字符模型。
+      // 普通聊天优先知识库和规则；模型加载失败也继续用查表兜底。
+      const wantsModel =
+        /慢速|神经网络|真推理|认真想/.test(text) || isCreativeRequest(text)
+      if (wantsModel && !this.charReady) {
+        this.loadCharModel().then(
+          function () {
+            self.buildReply(text)
+          },
+          function () {
+            self.buildReply(text)
+          }
+        )
+        return
+      }
+      setTimeout(function () {
+        if (!knowledgeBase) {
+          self.loadKnowledgeBase()
+        }
+        self.buildReply(text)
+      }, 30)
+    },
+
+    runBench() {
+      const self = this
+      this.thinking = true
+      this.armReplyWatchdog()
+      this.streamingText = '跑分中…'
+      this.streamingMeta = '基准 · 本机 JS'
+      this.scrollToBottom()
+      try {
+        runBenchmarkAsync(
+          { minMs: 40 },
+          {
+            onDone: function (result) {
+              self.disarmReplyWatchdog()
+              self.streamingText = ''
+              self.streamingMeta = ''
+              self.thinking = false
+              self.addMessage('ai', formatBenchmark(result), '基准 · 本机 JS')
+              console.log('[TinyAI] bench ' + JSON.stringify(result))
+            },
+          }
+        )
+      } catch (error) {
+        this.disarmReplyWatchdog()
+        this.streamingText = ''
+        this.streamingMeta = ''
+        this.thinking = false
+        const message = error && error.message ? error.message : String(error)
+        this.addMessage('ai', '跑分失败：' + message, '基准 · 错误')
+      }
+    },
+
+    buildReply(text) {
+      if (!replyEngine) {
+        this.finishReply('我还在准备，等我一下再发一次。', '初始化中')
+        return
+      }
+      const started = Date.now()
+      const self = this
+      try {
+        replyEngine.replyStream(text, {
+          onStart: function (meta) {
+            try {
+              self.streamingMeta = meta || ''
+            } catch (error) {}
+          },
+          onChunk: function (partial) {
+            try {
+              self.streamingText = partial
+              self.scrollToBottom()
+            } catch (error) {}
+          },
+          onDone: function (reply) {
+            try {
+              self.streamingText = ''
+              self.streamingMeta = ''
+              self.finishReply(reply.text, reply.meta)
+            } catch (error) {
+              self.finishReply('我卡了一下，再说一次？', '重试')
+            }
+          },
+        })
+      } catch (error) {
+        this.streamingText = ''
+        this.streamingMeta = ''
+        this.finishReply('我卡了一下，换个说法再试一次？', '重试')
+      }
+    },
+
+    // thinking 一旦挂住（流回调没回来、模型加载不返回、后台切走丢了回调），
+    // 发送入口会一直被挡住。这里超时就强制复位，保证永远还能继续发。
+    armReplyWatchdog() {
+      this.disarmReplyWatchdog()
+      const self = this
+      const ms = this.toyMode ? 180000 : 25000
+      replyWatchdog = setTimeout(function () {
+        replyWatchdog = null
+        if (!self.thinking) {
+          return
+        }
+        try {
+          if (replyEngine) {
+            replyEngine.cancelStream()
+          }
+        } catch (error) {}
+        self.streamingText = ''
+        self.streamingMeta = ''
+        self.thinking = false
+        self.addMessage('ai', '刚才那条卡住了，我没说完，你再发一次？', '超时兜底')
+        self.scrollToBottom()
+      }, ms)
+    },
+
+    disarmReplyWatchdog() {
+      if (replyWatchdog) {
+        clearTimeout(replyWatchdog)
+        replyWatchdog = null
+      }
+    },
+
+    finishReply(text, meta) {
+      this.disarmReplyWatchdog()
+      this.thinking = false
+      const body = typeof text === 'string' && text.length > 0 ? text : '嗯，这个我先记下。'
+      this.addMessage('ai', body, meta)
+    },
+
+    clearChat() {
+      cancelBenchmark()
+      this.disarmReplyWatchdog()
+      if (replyEngine) {
+        replyEngine.cancelStream()
+      }
+      this.streamingText = ''
+      this.streamingMeta = ''
+      this.messages = []
+      this.nextId = 1
+      this.thinking = false
+      this.draftText = ''
+      this.clearOfficialInput()
+      if (saveTimer) {
+        clearTimeout(saveTimer)
+        saveTimer = null
+      }
+      this.saveChatHistory()
+      this.scrollToBottom()
+    },
+  }
+</script>
+
+<template>
+  <div class="page">
+    <div class="view chat-view" if="{{ !showKeyboard }}">
+    <div class="header">
+      <div class="header-text">
+        <text class="title">TinyAI</text>
+        <text class="status">{{ statusText }}</text>
+        <text class="error" if="{{ errorMessage }}">{{ errorMessage }}</text>
+      </div>
+      <input class="clear-button" type="button" value="清空" onclick="clearChat" />
+    </div>
+
+    <!-- 键盘切换：就一个键，按一下在「离线键盘 / 官方键盘」之间切 -->
+    <div class="kb-source">
+      <div class="kb-source-btn kb-source-on" onclick="toggleKeyboardSource">
+        <text class="kb-source-text kb-source-text-on">{{ kbSourceLabel }}</text>
+      </div>
+    </div>
+
+    <scroll class="chat-scroll" scroll-y="true" scroll-top="{{ scrollTop }}">
+      <div class="chat-wrap">
+        <div class="chat-list">
+          <div class="msg-row {{ $item.role }}" for="{{ messages }}">
+            <div class="bubble bubble-{{ $item.role }}">
+              <text class="msg-text msg-text-{{ $item.role }}">{{ $item.text }}</text>
+              <text class="msg-meta" if="{{ $item.meta }}">{{ $item.meta }}</text>
+            </div>
+          </div>
+
+          <div class="msg-row ai" if="{{ streamingText }}">
+            <div class="bubble bubble-ai">
+              <text class="msg-text msg-text-ai">{{ streamingText }}</text>
+              <text class="msg-meta" if="{{ streamingMeta }}">{{ streamingMeta }}</text>
+            </div>
+          </div>
+
+          <div class="msg-row ai" if="{{ thinking && !streamingText }}">
+            <div class="bubble bubble-ai">
+              <text class="msg-text msg-text-ai">正在思考...</text>
+            </div>
+          </div>
+        </div>
+      </div>
+    </scroll>
+
+    <div class="input-bar">
+      <!-- 输入框只有一套外观：外壳永远是这个圆角条，
+           官方模式把里面的文字换成真 input，用户点它就弹系统输入法。
+           之前用隐藏 input + 代码 focus()，手表固件上会直接卡死。 -->
+      <div class="input-wrap" onclick="openKeyboard">
+        <text class="chat-input-text" if="{{ draftText && !useOfficialKeyboard }}">{{ draftText }}</text>
+        <text class="chat-input-placeholder" if="{{ !draftText && !useOfficialKeyboard }}">点这里输入...</text>
+        <input
+          id="chat-input"
+          class="input-native"
+          if="{{ useOfficialKeyboard && inputActive }}"
+          type="text"
+          maxlength="60"
+          placeholder="点这里输入..."
+          oninput="onInputChange"
+          onchange="onInputChange" />
+      </div>
+      <input class="send-button" type="button" value="发送" onclick="sendMessage" />
+    </div>
+
+    </div>
+
+    <div class="view kb-view" if="{{ showKeyboard }}">
+      <div class="kb-draft-wrap">
+        <text class="kb-draft" if="{{ draftPreview }}">{{ draftPreview }}</text>
+        <text class="kb-draft kb-draft-empty" if="{{ !draftPreview }}">输入内容</text>
+      </div>
+
+      <!-- 拼音条常驻占位，避免出拼音时整个键盘往下跳 -->
+      <div class="kb-typed" onclick="commitPinyinAsText">
+        <text class="kb-typed-text">{{ typedPinyin }}</text>
+      </div>
+
+      <div class="kb-cand-row" if="{{ !candExpanded }}">
+        <div class="kb-cand" if="{{ cand0 }}" onclick="pickCandidate(cand0)">
+          <text class="kb-cand-text">{{ cand0 }}</text>
+        </div>
+        <div class="kb-cand" if="{{ cand1 }}" onclick="pickCandidate(cand1)">
+          <text class="kb-cand-text">{{ cand1 }}</text>
+        </div>
+        <div class="kb-cand" if="{{ cand2 }}" onclick="pickCandidate(cand2)">
+          <text class="kb-cand-text">{{ cand2 }}</text>
+        </div>
+        <div class="kb-cand-more" if="{{ hasMore }}" onclick="expandCandidates">
+          <text class="kb-cand-more-text">更多</text>
+        </div>
+      </div>
+
+      <!-- 展开同音字：4 行 x 3 个，一共 12 个，方屏也放得下 -->
+      <div class="kb-more-panel" if="{{ candExpanded }}">
+        <div class="kb-more-row">
+          <div class="kb-more-chip" if="{{ cand0 }}" onclick="pickCandidate(cand0)"><text class="kb-more-text">{{ cand0 }}</text></div>
+          <div class="kb-more-chip" if="{{ cand1 }}" onclick="pickCandidate(cand1)"><text class="kb-more-text">{{ cand1 }}</text></div>
+          <div class="kb-more-chip" if="{{ cand2 }}" onclick="pickCandidate(cand2)"><text class="kb-more-text">{{ cand2 }}</text></div>
+        </div>
+        <div class="kb-more-row">
+          <div class="kb-more-chip" if="{{ cand3 }}" onclick="pickCandidate(cand3)"><text class="kb-more-text">{{ cand3 }}</text></div>
+          <div class="kb-more-chip" if="{{ cand4 }}" onclick="pickCandidate(cand4)"><text class="kb-more-text">{{ cand4 }}</text></div>
+          <div class="kb-more-chip" if="{{ cand5 }}" onclick="pickCandidate(cand5)"><text class="kb-more-text">{{ cand5 }}</text></div>
+        </div>
+        <div class="kb-more-row">
+          <div class="kb-more-chip" if="{{ cand6 }}" onclick="pickCandidate(cand6)"><text class="kb-more-text">{{ cand6 }}</text></div>
+          <div class="kb-more-chip" if="{{ cand7 }}" onclick="pickCandidate(cand7)"><text class="kb-more-text">{{ cand7 }}</text></div>
+          <div class="kb-more-chip" if="{{ cand8 }}" onclick="pickCandidate(cand8)"><text class="kb-more-text">{{ cand8 }}</text></div>
+        </div>
+        <div class="kb-more-row">
+          <div class="kb-more-chip" if="{{ cand9 }}" onclick="pickCandidate(cand9)"><text class="kb-more-text">{{ cand9 }}</text></div>
+          <div class="kb-more-chip" if="{{ cand10 }}" onclick="pickCandidate(cand10)"><text class="kb-more-text">{{ cand10 }}</text></div>
+          <div class="kb-more-chip" if="{{ cand11 }}" onclick="pickCandidate(cand11)"><text class="kb-more-text">{{ cand11 }}</text></div>
+        </div>
+        <div class="kb-more-back" onclick="collapseCandidates"><text class="kb-more-back-text">收起</text></div>
+      </div>
+
+      <div class="kb-row kb-row1" if="{{ !candExpanded && kbPage === 'letters' }}">
+        <div class="kb-key" onclick="pressKey('q')">
+          <text class="kb-key-text">q</text>
+        </div>
+        <div class="kb-key" onclick="pressKey('w')">
+          <text class="kb-key-text">w</text>
+        </div>
+        <div class="kb-key" onclick="pressKey('e')">
+          <text class="kb-key-text">e</text>
+        </div>
+        <div class="kb-key" onclick="pressKey('r')">
+          <text class="kb-key-text">r</text>
+        </div>
+        <div class="kb-key" onclick="pressKey('t')">
+          <text class="kb-key-text">t</text>
+        </div>
+        <div class="kb-key" onclick="pressKey('y')">
+          <text class="kb-key-text">y</text>
+        </div>
+        <div class="kb-key" onclick="pressKey('u')">
+          <text class="kb-key-text">u</text>
+        </div>
+        <div class="kb-key" onclick="pressKey('i')">
+          <text class="kb-key-text">i</text>
+        </div>
+        <div class="kb-key" onclick="pressKey('o')">
+          <text class="kb-key-text">o</text>
+        </div>
+        <div class="kb-key" onclick="pressKey('p')">
+          <text class="kb-key-text">p</text>
+        </div>
+      </div>
+      <div class="kb-row kb-row2" if="{{ !candExpanded && kbPage === 'letters' }}">
+        <div class="kb-key" onclick="pressKey('a')">
+          <text class="kb-key-text">a</text>
+        </div>
+        <div class="kb-key" onclick="pressKey('s')">
+          <text class="kb-key-text">s</text>
+        </div>
+        <div class="kb-key" onclick="pressKey('d')">
+          <text class="kb-key-text">d</text>
+        </div>
+        <div class="kb-key" onclick="pressKey('f')">
+          <text class="kb-key-text">f</text>
+        </div>
+        <div class="kb-key" onclick="pressKey('g')">
+          <text class="kb-key-text">g</text>
+        </div>
+        <div class="kb-key" onclick="pressKey('h')">
+          <text class="kb-key-text">h</text>
+        </div>
+        <div class="kb-key" onclick="pressKey('j')">
+          <text class="kb-key-text">j</text>
+        </div>
+        <div class="kb-key" onclick="pressKey('k')">
+          <text class="kb-key-text">k</text>
+        </div>
+        <div class="kb-key" onclick="pressKey('l')">
+          <text class="kb-key-text">l</text>
+        </div>
+      </div>
+      <div class="kb-row kb-row3" if="{{ !candExpanded && kbPage === 'letters' }}">
+        <div class="kb-key" onclick="pressKey('，')">
+          <text class="kb-key-text">，</text>
+        </div>
+        <div class="kb-key" onclick="pressKey('z')">
+          <text class="kb-key-text">z</text>
+        </div>
+        <div class="kb-key" onclick="pressKey('x')">
+          <text class="kb-key-text">x</text>
+        </div>
+        <div class="kb-key" onclick="pressKey('c')">
+          <text class="kb-key-text">c</text>
+        </div>
+        <div class="kb-key" onclick="pressKey('v')">
+          <text class="kb-key-text">v</text>
+        </div>
+        <div class="kb-key" onclick="pressKey('b')">
+          <text class="kb-key-text">b</text>
+        </div>
+        <div class="kb-key" onclick="pressKey('n')">
+          <text class="kb-key-text">n</text>
+        </div>
+        <div class="kb-key" onclick="pressKey('m')">
+          <text class="kb-key-text">m</text>
+        </div>
+        <div class="kb-key" onclick="pressKey('。')">
+          <text class="kb-key-text">。</text>
+        </div>
+      </div>
+      <div class="kb-row kb-row1" if="{{ !candExpanded && kbPage === 'numbers' }}">
+        <div class="kb-key" onclick="pressKey('1')">
+          <text class="kb-key-text">1</text>
+        </div>
+        <div class="kb-key" onclick="pressKey('2')">
+          <text class="kb-key-text">2</text>
+        </div>
+        <div class="kb-key" onclick="pressKey('3')">
+          <text class="kb-key-text">3</text>
+        </div>
+        <div class="kb-key" onclick="pressKey('4')">
+          <text class="kb-key-text">4</text>
+        </div>
+        <div class="kb-key" onclick="pressKey('5')">
+          <text class="kb-key-text">5</text>
+        </div>
+        <div class="kb-key" onclick="pressKey('6')">
+          <text class="kb-key-text">6</text>
+        </div>
+        <div class="kb-key" onclick="pressKey('7')">
+          <text class="kb-key-text">7</text>
+        </div>
+        <div class="kb-key" onclick="pressKey('8')">
+          <text class="kb-key-text">8</text>
+        </div>
+        <div class="kb-key" onclick="pressKey('9')">
+          <text class="kb-key-text">9</text>
+        </div>
+        <div class="kb-key" onclick="pressKey('0')">
+          <text class="kb-key-text">0</text>
+        </div>
+      </div>
+      <div class="kb-row kb-row2" if="{{ !candExpanded && kbPage === 'numbers' }}">
+        <div class="kb-key" onclick="pressKey('-')">
+          <text class="kb-key-text kb-key-small">-</text>
+        </div>
+        <div class="kb-key" onclick="pressKey('/')">
+          <text class="kb-key-text kb-key-small">/</text>
+        </div>
+        <div class="kb-key" onclick="pressKey(':')">
+          <text class="kb-key-text kb-key-small">:</text>
+        </div>
+        <div class="kb-key" onclick="pressKey(';')">
+          <text class="kb-key-text kb-key-small">;</text>
+        </div>
+        <div class="kb-key" onclick="pressKey('(')">
+          <text class="kb-key-text kb-key-small">(</text>
+        </div>
+        <div class="kb-key" onclick="pressKey(')')">
+          <text class="kb-key-text kb-key-small">)</text>
+        </div>
+        <div class="kb-key" onclick="pressKey('¥')">
+          <text class="kb-key-text kb-key-small">¥</text>
+        </div>
+        <div class="kb-key" onclick="pressKey('&')">
+          <text class="kb-key-text kb-key-small">&</text>
+        </div>
+        <div class="kb-key" onclick="pressKey('@')">
+          <text class="kb-key-text kb-key-small">@</text>
+        </div>
+        <div class="kb-key" onclick="pressKey('*')">
+          <text class="kb-key-text kb-key-small">*</text>
+        </div>
+      </div>
+      <div class="kb-row kb-row3" if="{{ !candExpanded && kbPage === 'numbers' }}">
+        <div class="kb-key" onclick="pressKey('，')">
+          <text class="kb-key-text kb-key-small">，</text>
+        </div>
+        <div class="kb-key" onclick="pressKey('。')">
+          <text class="kb-key-text kb-key-small">。</text>
+        </div>
+        <div class="kb-key" onclick="pressKey('？')">
+          <text class="kb-key-text kb-key-small">？</text>
+        </div>
+        <div class="kb-key" onclick="pressKey('！')">
+          <text class="kb-key-text kb-key-small">！</text>
+        </div>
+        <div class="kb-key" onclick="pressKey('、')">
+          <text class="kb-key-text kb-key-small">、</text>
+        </div>
+        <div class="kb-key" onclick="pressKey('…')">
+          <text class="kb-key-text kb-key-small">…</text>
+        </div>
+        <div class="kb-key" onclick="pressKey('#')">
+          <text class="kb-key-text kb-key-small">#</text>
+        </div>
+        <div class="kb-key" onclick="pressKey('%')">
+          <text class="kb-key-text kb-key-small">%</text>
+        </div>
+        <div class="kb-key" onclick="pressKey('~')">
+          <text class="kb-key-text kb-key-small">~</text>
+        </div>
+        <div class="kb-key" onclick="pressKey('+')">
+          <text class="kb-key-text kb-key-small">+</text>
+        </div>
+      </div>
+      <div class="kb-row kb-tools" if="{{ !candExpanded }}">
+        <div class="kb-tool kb-tool-mode" onclick="toggleKbMode">
+          <text class="kb-tool-text" if="{{ kbMode === 'ZH' }}">中</text>
+          <text class="kb-tool-text" if="{{ kbMode === 'EN' }}">英</text>
+        </div>
+        <div class="kb-tool kb-tool-page" onclick="toggleKbPage">
+          <text class="kb-tool-text" if="{{ kbPage === 'letters' }}">123</text>
+          <text class="kb-tool-text" if="{{ kbPage === 'numbers' }}">abc</text>
+        </div>
+        <div class="kb-tool kb-tool-space" onclick="pressSpace">
+          <text class="kb-tool-text">空格</text>
+        </div>
+        <div class="kb-tool kb-tool-del" onclick="pressDelete">
+          <text class="kb-tool-text">删</text>
+        </div>
+        <div class="kb-tool kb-tool-send" onclick="sendFromKeyboard">
+          <text class="kb-tool-text kb-tool-send-text">发送</text>
+        </div>
+      </div>
+
+      <div class="kb-row kb-close-row" if="{{ !candExpanded }}">
+        <div class="kb-close" onclick="closeKeyboard">
+          <text class="kb-close-text">收起键盘</text>
+        </div>
+      </div>
+    </div>
+  </div>
+</template>
+
+<style>
+  .page {
+    width: 100%;
+    height: 100%;
+    background-color: #0b0f14;
+    flex-direction: column;
+    align-items: center;
+  }
+
+  /* 聊天和键盘是同一页里的两个视图，用 if 切换。
+     手表固件上靠定位撑起来的覆盖层不可靠，会串版甚至卡死。 */
+  .view {
+    width: 100%;
+    height: 100%;
+    flex-shrink: 0;
+    flex-direction: column;
+    align-items: center;
+  }
+
+  .header {
+    width: 58%;
+    padding-top: 42px;
+    padding-bottom: 8px;
+    flex-direction: row;
+    align-items: center;
+    justify-content: space-between;
+  }
+
+  .header-text {
+    flex: 1;
+    flex-direction: column;
+  }
+
+  .title {
+    font-size: 28px;
+    font-weight: bold;
+    color: #e6edf3;
+  }
+
+  .status {
+    margin-top: 2px;
+    font-size: 12px;
+    color: #7e9ea8;
+  }
+
+  .error {
+    margin-top: 3px;
+    font-size: 11px;
+    line-height: 15px;
+    color: #ff6b6b;
+  }
+
+  .clear-button {
+    width: 60px;
+    height: 32px;
+    border-radius: 16px;
+    background-color: #141a22;
+    border: 1px solid #253343;
+    color: #8b98a5;
+    font-size: 12px;
+    text-align: center;
+  }
+
+  .chat-scroll {
+    width: 100%;
+    flex: 1;
+    min-height: 80px;
+  }
+
+  .chat-wrap {
+    width: 100%;
+    flex-direction: column;
+    align-items: center;
+  }
+
+  .chat-list {
+    width: 67%;
+    padding-top: 6px;
+    padding-bottom: 12px;
+    flex-direction: column;
+  }
+
+  .msg-row {
+    width: 100%;
+    margin-top: 8px;
+    flex-direction: row;
+  }
+
+  .msg-row.user {
+    justify-content: flex-end;
+  }
+
+  .msg-row.ai {
+    justify-content: flex-start;
+  }
+
+  .bubble {
+    width: 54%;
+    padding: 10px 12px;
+    border-radius: 16px;
+    flex-direction: column;
+  }
+
+  .bubble-user {
+    background-color: #4cc9f0;
+    border-bottom-right-radius: 4px;
+  }
+
+  .bubble-ai {
+    background-color: #141a22;
+    border: 1px solid #1e2833;
+    border-bottom-left-radius: 4px;
+  }
+
+  .msg-text {
+    width: 100%;
+    font-size: 20px;
+    line-height: 28px;
+    color: #dbe6f0;
+  }
+
+  .msg-text-user {
+    color: #061015;
+  }
+
+  .msg-text-ai {
+    color: #dbe6f0;
+  }
+
+  .msg-meta {
+    margin-top: 5px;
+    font-size: 12px;
+    line-height: 16px;
+    color: #7e9ea8;
+  }
+
+  .input-bar {
+    width: 64%;
+    padding-top: 8px;
+    padding-bottom: 58px;
+    flex-direction: row;
+    align-items: center;
+  }
+
+  .input-wrap {
+    flex: 1;
+    height: 46px;
+    border-radius: 23px;
+    background-color: #141a22;
+    border: 1px solid #253343;
+    padding-left: 12px;
+    padding-right: 12px;
+    justify-content: center;
+    flex-direction: column;
+  }
+
+  .chat-input-text {
+    width: 100%;
+    font-size: 18px;
+    line-height: 24px;
+    color: #e6edf3;
+  }
+
+  .chat-input-placeholder {
+    width: 100%;
+    font-size: 18px;
+    line-height: 24px;
+    color: #5b6b7a;
+  }
+
+  /* 离线 26 键键盘：整屏覆盖，尺寸按 466 圆屏安全区算。 */
+  .kb-view {
+    background-color: #05070a;
+  }
+
+  .kb-draft-wrap {
+    width: 47%;
+    height: 26px;
+    margin-top: 32px;
+    justify-content: center;
+    flex-direction: column;
+  }
+
+  .kb-draft {
+    width: 100%;
+    height: 26px;
+    line-height: 26px;
+    font-size: 16px;
+    text-align: center;
+    color: #e6edf3;
+  }
+
+  .kb-draft-empty {
+    color: #47535f;
+  }
+
+  .kb-typed {
+    width: 64%;
+    height: 30px;
+    align-items: center;
+    justify-content: center;
+  }
+
+  .kb-typed-text {
+    height: 30px;
+    line-height: 30px;
+    font-size: 22px;
+    font-weight: bold;
+    color: #4cc9f0;
+  }
+
+  .kb-cand-row {
+    width: 76%;
+    height: 44px;
+    flex-direction: row;
+    align-items: center;
+    justify-content: center;
+  }
+
+  .kb-cand {
+    flex: 1;
+    height: 36px;
+    margin-left: 3px;
+    margin-right: 3px;
+    border-radius: 14px;
+    background-color: #1a222c;
+    align-items: center;
+    justify-content: center;
+  }
+
+  .kb-cand-text {
+    width: 100%;
+    height: 36px;
+    line-height: 36px;
+    text-align: center;
+    font-size: 22px;
+    color: #f2f7fb;
+  }
+
+  .kb-cand-more {
+    width: 52px;
+    height: 40px;
+    margin-left: 3px;
+    margin-right: 3px;
+    border-radius: 12px;
+    background-color: #253343;
+    align-items: center;
+    justify-content: center;
+  }
+
+  .kb-cand-more-text {
+    width: 100%;
+    height: 40px;
+    line-height: 40px;
+    text-align: center;
+    font-size: 15px;
+    color: #4cc9f0;
+  }
+
+  .kb-more-panel {
+    width: 76%;
+    flex-direction: column;
+    align-items: center;
+  }
+
+  .kb-more-row {
+    width: 100%;
+    height: 52px;
+    flex-direction: row;
+    align-items: center;
+    justify-content: center;
+  }
+
+  .kb-more-chip {
+    flex: 1;
+    height: 46px;
+    margin-left: 3px;
+    margin-right: 3px;
+    border-radius: 12px;
+    background-color: #1a222c;
+    align-items: center;
+    justify-content: center;
+  }
+
+  .kb-more-text {
+    width: 100%;
+    height: 46px;
+    line-height: 46px;
+    text-align: center;
+    font-size: 22px;
+    color: #f2f7fb;
+  }
+
+  .kb-more-back {
+    width: 120px;
+    height: 40px;
+    margin-top: 8px;
+    border-radius: 20px;
+    background-color: #12181f;
+    align-items: center;
+    justify-content: center;
+  }
+
+  .kb-more-back-text {
+    width: 100%;
+    height: 40px;
+    line-height: 40px;
+    text-align: center;
+    font-size: 15px;
+    color: #7e9ea8;
+  }
+
+  .kb-row {
+    flex-direction: row;
+    align-items: center;
+    justify-content: center;
+  }
+
+  .kb-row1 {
+    width: 88%;
+    height: 54px;
+  }
+
+  .kb-row2 {
+    width: 88%;
+    height: 54px;
+  }
+
+  .kb-row3 {
+    width: 88%;
+    height: 54px;
+  }
+
+  .kb-key:active {
+    background-color: #2b3644;
+  }
+
+  .kb-key {
+    flex: 1;
+    height: 50px;
+    margin-left: 2px;
+    margin-right: 2px;
+    border-radius: 14px;
+    background-color: #161d26;
+    align-items: center;
+    justify-content: center;
+  }
+
+  .kb-key-text {
+    width: 100%;
+    height: 50px;
+    line-height: 50px;
+    text-align: center;
+    font-size: 26px;
+    color: #e9f1f8;
+  }
+
+  .kb-key-small {
+    font-size: 22px;
+  }
+
+  .kb-tools {
+    width: 69%;
+    height: 52px;
+  }
+
+  .kb-tool {
+    height: 46px;
+    margin-left: 2px;
+    margin-right: 2px;
+    border-radius: 14px;
+    background-color: #1b232d;
+    align-items: center;
+    justify-content: center;
+  }
+
+  .kb-tool-mode {
+    width: 46px;
+  }
+
+  .kb-tool-page {
+    width: 50px;
+  }
+
+  .kb-tool-space {
+    flex: 1;
+  }
+
+  .kb-tool-del {
+    width: 50px;
+  }
+
+  .kb-tool-send {
+    width: 58px;
+    background-color: #4cc9f0;
+  }
+
+  .kb-tool-text {
+    width: 100%;
+    height: 46px;
+    line-height: 46px;
+    text-align: center;
+    font-size: 20px;
+    color: #dbe6f0;
+  }
+
+  .kb-tool-send-text {
+    color: #061015;
+    font-weight: bold;
+  }
+
+  .kb-close-row {
+    width: 56%;
+    height: 40px;
+    flex-direction: row;
+    align-items: center;
+    justify-content: center;
+  }
+
+  .kb-close {
+    flex: 1;
+    height: 36px;
+    margin-left: 4px;
+    margin-right: 4px;
+    border-radius: 20px;
+    background-color: #12181f;
+    align-items: center;
+    justify-content: center;
+  }
+
+  .kb-close-text {
+    width: 100%;
+    height: 36px;
+    line-height: 36px;
+    text-align: center;
+    font-size: 15px;
+    color: #7e9ea8;
+  }
+
+  .kb-source {
+    width: 58%;
+    height: 32px;
+    margin-top: 2px;
+    margin-bottom: 2px;
+    flex-direction: row;
+    align-items: center;
+    justify-content: center;
+  }
+
+  .kb-source-btn {
+    flex: 1;
+    height: 28px;
+    margin-left: 3px;
+    margin-right: 3px;
+    border-radius: 14px;
+    background-color: #141a22;
+    border: 1px solid #253343;
+    align-items: center;
+    justify-content: center;
+  }
+
+  .kb-source-on {
+    background-color: #4cc9f0;
+    border: 1px solid #4cc9f0;
+  }
+
+  .kb-source-text {
+    width: 100%;
+    height: 28px;
+    line-height: 28px;
+    text-align: center;
+    font-size: 13px;
+    color: #8b98a5;
+  }
+
+  .kb-source-text-on {
+    color: #061015;
+    font-weight: bold;
+  }
+
+  /* ===== 方屏（390x450）独立版式 =====
+     designWidth 是 466：所有 px 会按 设备宽度/466 缩放。方屏 390 宽时
+     缩放比 0.837，画布变成 466 x 537.7，比圆屏的 466 x 466 纵向多出约 72。
+     所以方屏不是把圆屏放大，而是单独排一套：
+       - 行宽 88% -> 94%（方屏四角没有圆弧切削，可以铺满）
+       - 键高 50 -> 72，键字 26 -> 30
+       - 顶部留白 32 -> 24，底部不再空一大块
+     两个媒体条件取或：不同固件判定基准（物理像素 / 缩放后画布）不一样，
+     aspect-ratio 和 min-height 任一命中都算方屏。 */
+  @media (max-aspect-ratio: 9/10), (min-height: 500px) {
+    .kb-draft-wrap { width: 60%; height: 30px; margin-top: 24px; }
+    .kb-draft { height: 30px; line-height: 30px; font-size: 17px; }
+    .kb-typed { width: 76%; height: 36px; }
+    .kb-typed-text { height: 36px; line-height: 36px; font-size: 25px; }
+    .kb-cand-row { width: 94%; height: 60px; }
+    .kb-cand { height: 52px; margin-left: 2px; margin-right: 2px; border-radius: 16px; }
+    .kb-cand-text { height: 52px; line-height: 52px; font-size: 25px; }
+    .kb-cand-more { width: 62px; height: 52px; margin-left: 2px; margin-right: 2px; border-radius: 16px; }
+    .kb-cand-more-text { height: 52px; line-height: 52px; font-size: 16px; }
+    .kb-more-panel { width: 94%; margin-top: 12px; }
+    .kb-more-row { height: 84px; }
+    .kb-more-chip { height: 78px; margin-left: 4px; margin-right: 4px; border-radius: 20px; }
+    .kb-more-text { height: 78px; line-height: 78px; font-size: 28px; }
+    .kb-more-back { width: 160px; height: 54px; border-radius: 27px; }
+    .kb-more-back-text { height: 54px; line-height: 54px; font-size: 17px; }
+    .kb-row1 { width: 94%; height: 78px; }
+    .kb-row2 { width: 94%; height: 78px; }
+    .kb-row3 { width: 94%; height: 78px; }
+    .kb-key { height: 72px; margin-left: 2px; margin-right: 2px; border-radius: 18px; }
+    .kb-key-text { height: 72px; line-height: 72px; font-size: 30px; }
+    .kb-key-small { font-size: 24px; }
+    .kb-tools { width: 94%; height: 78px; }
+    .kb-tool { height: 72px; border-radius: 18px; }
+    .kb-tool-text { height: 72px; line-height: 72px; font-size: 23px; }
+    .kb-tool-mode { width: 56px; }
+    .kb-tool-page { width: 62px; }
+    .kb-tool-del { width: 62px; }
+    .kb-tool-send { width: 76px; }
+    .kb-close-row { width: 72%; height: 56px; }
+    .kb-close { height: 50px; border-radius: 25px; }
+    .kb-close-text { height: 50px; line-height: 50px; font-size: 16px; }
+    .kb-source { width: 76%; height: 40px; }
+    .kb-source-btn { height: 36px; border-radius: 18px; }
+    .kb-source-text { height: 36px; line-height: 36px; font-size: 15px; }
+  }
+
+  /* 真 input 只负责收字，外壳画在外面的 .input-wrap 上，两套模式长得一模一样 */
+  .input-native {
+    width: 100%;
+    height: 40px;
+    background-color: transparent;
+    border-width: 0;
+    border-radius: 0;
+    padding-left: 0;
+    padding-right: 0;
+    font-size: 18px;
+    color: #e6edf3;
+    text-align: left;
+  }
+
+  .send-button {
+    width: 64px;
+    height: 46px;
+    margin-left: 8px;
+    border-radius: 23px;
+    background-color: #4cc9f0;
+    color: #061015;
+    font-size: 16px;
+    font-weight: bold;
+    text-align: center;
+  }
+</style>
