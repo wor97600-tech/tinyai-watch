@@ -2,7 +2,7 @@
 
 <img src="docs/images/logo.png" width="104" alt="TinyAI" />
 
-# 泰尼艾 · TinyAI Watch
+# TinyAI
 
 **一块手表上的离线中文对话模型 + 26 键离线拼音输入法**
 
@@ -10,7 +10,7 @@
 
 [![License](https://img.shields.io/badge/license-MIT-3da639.svg)](LICENSE)
 [![Platform](https://img.shields.io/badge/platform-BlueOS%20watch-0ea5e9.svg)](#支持设备)
-[![Version](https://img.shields.io/badge/version-0.9.20-6f42c1.svg)](CHANGELOG.md)
+[![Version](https://img.shields.io/badge/version-1.0.0-6f42c1.svg)](CHANGELOG.md)
 [![RPK](https://img.shields.io/badge/RPK-553%20KB-informational.svg)](#模型卡片)
 [![Tests](https://img.shields.io/badge/tests-529%20assertions-success.svg)](tests)
 
@@ -20,8 +20,7 @@
 
 ## 这是什么
 
-泰尼艾（TinyAI Watch，读作 *Tiny AI*）是一个跑在 **BlueOS 智能手表**上的离线中文对话应用。
-名字就是英文的音译：泰尼艾 ≈ Tiny AI，念出来和英文一样。
+TinyAI 是一个跑在 **BlueOS 智能手表**上的离线 AI 对话应用。
 
 所有推理都在手表本地完成：没有网络请求，没有云端模型，聊天记录也不会离开设备。
 一块手表只有几 MB 可用内存、没有 GPU，所以这里没有跑大模型，而是做了一件事——
@@ -35,7 +34,7 @@
 | :-- | :-- |
 | 🧠 **本地字符模型** | 20 维字嵌入 + 64 隐藏层 + 3003 字表，int8 量化后 **307 KB**，纯 JavaScript 推理 |
 | 💬 **分层对话引擎** | 算术/时间 → 诗句接龙 → 闲聊意图 → 知识库 → 日常短句 → 字符接龙，逐层兜底 |
-| ⌨️ **26 键离线拼音** | 自研拼音索引（23 KB），同音字候选、展开翻页、中英切换，全程无系统输入法 |
+| ⌨️ **26 键离线拼音** | 本地拼音索引（23 KB，由公开拼音数据构建），同音字候选、展开翻页、中英切换，全程无系统输入法 |
 | 🔁 **双输入源一键切换** | 「离线键盘 / 官方输入法」一个键来回切，选择会被记住 |
 | 📐 **方屏 / 圆屏双布局** | 方屏单独排版、按键更大；圆屏按安全区重排，不是简单缩放 |
 | 🌙 **生命周期收尾** | 熄屏、切后台自动停流式输出并收起输入法，避免后台空转把整机拖死 |
@@ -44,7 +43,7 @@
 
 ## 它是怎么回答的
 
-`mermaid
+```mermaid
 flowchart TD
   A([用户输入]) --> B{纯模型模式?}
   B -->|是| Z[字符模型自回归生成]
@@ -55,7 +54,7 @@ flowchart TD
   F --> G[日常陈述 178 条]
   G --> H[字符模型接龙兜底]
   H --> I([保底话术 · 永远有话说])
-`
+```
 
 每一层都可以「命中即返回」，命中不了才往下走。这样做的原因很实际：
 手表上让 3000 词表的小模型回答「今天几号」只会答成梦话，但查表能 1ms 答对。
@@ -84,6 +83,37 @@ flowchart TD
 - 方屏版按键更大、留白更少；圆屏版避开四角安全区
 - 顶部一个按键在「离线键盘 / 官方输入法」之间切换，状态持久化
 
+## 完全开源
+
+这个项目没有闭源部分，仓库里就是全部东西：
+
+| 内容 | 位置 | 说明 |
+| :-- | :-- | :-- |
+| 应用源码 | `src/` | 页面、对话引擎、模型推理、拼音引擎全部 JavaScript，无编译产物 |
+| 运行时权重 | `src/assets/char_model_q.bin` | 手表上真正跑的那份 int8 权重，307 KB |
+| 训练后 float32 模型 | `training/out/char_model_c8_v3000_h64.json` | 量化前的原始参数，可直接复现量化结果 |
+| 训练代码 | `training/train_char_model.py` | numpy 手写前向/反向传播，不依赖 PyTorch |
+| 语料处理 | `training/prepare_dialogue_corpus.py` | LCCC → 训练语料的清洗、采样、词表裁剪 |
+| 训练语料 | `training/data/corpus_mix_v3000.txt` | 本次训练实际使用的 184,129 行语料 |
+| 训练日志 | `training/data/train_log.txt` | 20 轮 loss / Top-1 / Top-3 全过程 |
+| 测试 | `tests/` | 529 条断言，纯 Node，不需要手表 |
+
+所以你可以只改一个超参数，从零训练出一份自己的手表模型：
+
+```bash
+pip install -r training/requirements.txt
+python training/train_char_model.py \
+  --corpus training/data/corpus_mix_v3000.txt \
+  --context 8 --emb 20 --hidden 64 --vocab 3000 --epochs 20 \
+  --out training/out/char_model_c8_v3000_h64.json
+```
+
+训练完把 JSON 按 `src/ai/model_loader.js` 的 TAI2 格式量化成 `char_model_q.bin`，
+替换进 `src/assets/` 即可，手表端推理代码一行都不用改。
+
+> 说明：本仓库不包含任何第三方应用的代码或安装包。键盘、拼音候选、对话分层
+> 都是本仓库自行实现，拼音索引由公开拼音数据在构建期生成。
+
 ## 支持设备
 
 | 设备 | 说明 |
@@ -93,7 +123,7 @@ flowchart TD
 
 ## 目录结构
 
-`text
+```text
 src/
   app.ux                    应用入口
   manifest.json             应用清单（包名、版本、权限、设备类型）
@@ -114,24 +144,25 @@ src/
     pinyin_index.js         拼音索引（构建期生成）
   input/pinyin_engine.js    拼音切分与候选
   platform/blueos_io.js     BlueOS 存储 / 文件封装
+training/                   语料处理、训练脚本、训练产物
 tests/                      13 个 Node 测试套件
 scripts/                    拼音词典构建、图标处理工具
-`
+```
 
 ## 快速开始
 
-`bash
+```bash
 git clone https://github.com/wor97600-tech/tinyai-watch.git
 cd tinyai-watch
 npm run check        # 529 条断言，不需要手表
-`
+```
 
 用 **BlueOS Studio** 打开本目录即可编译预览；打正式包时选择设备类型
 `watch-round` 或 `watch-square`。
 
 ## 测试
 
-`bash
+```bash
 npm run check           # 全量
 npm run check:char      # 字符模型数值
 npm run check:quant     # int8 量化一致性
@@ -139,7 +170,7 @@ npm run check:kb        # 知识库
 npm run check:qa        # 混合问答
 npm run check:reply     # 回复引擎
 npm run check:kbd       # 键盘布局与交互
-`
+```
 
 测试全部是纯 Node 脚本，直接跑在桌面端，覆盖模型数值、知识库命中、
 键盘排版约束、官方输入法链路和熄屏生命周期。

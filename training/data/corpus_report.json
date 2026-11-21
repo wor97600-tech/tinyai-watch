@@ -1,0 +1,22 @@
+{
+  "source": "LCCC base (THU-coai), https://huggingface.co/datasets/silver/lccc",
+  "license": "MIT",
+  "inputs": [
+    "lccc_base_train_partial.jsonl.gz",
+    "lccc_base_valid.jsonl.gz",
+    "lccc_base_test.jsonl.gz"
+  ],
+  "rawUtterances": 1964888,
+  "poolChars": 20000009,
+  "poolLines": 1706669,
+  "uniqueChars": 5705,
+  "vocabCap": 3000,
+  "vocabCoverage": 0.99758,
+  "candidateLines": 1665626,
+  "candidateChars": 19307955,
+  "selectedLines": 172689,
+  "selectedChars": 2000006,
+  "avgLineChars": 11.582,
+  "topChars": "我的你了不是好哈一有么就啊这个没来在要还看天去都人那也说可到",
+  "seed": 42
+}

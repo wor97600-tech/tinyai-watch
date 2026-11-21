@@ -1,0 +1,39 @@
+Corpus: 184129 lines / 2113728 chars, unique 4867
+Vocab 3003  context 8  emb 20  hidden 64  -> input 160, MACs/char 202432
+Samples: train 2150274, val 134453
+epoch   1  lr 0.00600  loss 4.9614
+epoch   2  lr 0.00596  loss 4.6561  train_top1 0.2223  val_top1 0.2215  val_top3 0.3444
+epoch   3  lr 0.00585  loss 4.5952
+epoch   4  lr 0.00566  loss 4.5634  train_top1 0.2249  val_top1 0.2232  val_top3 0.3482
+epoch   5  lr 0.00540  loss 4.5419
+epoch   6  lr 0.00508  loss 4.5239  train_top1 0.2282  val_top1 0.2268  val_top3 0.3522
+epoch   7  lr 0.00471  loss 4.5082
+epoch   8  lr 0.00429  loss 4.4934  train_top1 0.2290  val_top1 0.2275  val_top3 0.3549
+epoch   9  lr 0.00385  loss 4.4782
+epoch  10  lr 0.00339  loss 4.4638  train_top1 0.2322  val_top1 0.2294  val_top3 0.3567
+epoch  11  lr 0.00291  loss 4.4497
+epoch  12  lr 0.00245  loss 4.4360  train_top1 0.2346  val_top1 0.2321  val_top3 0.3592
+epoch  13  lr 0.00201  loss 4.4229
+epoch  14  lr 0.00159  loss 4.4108  train_top1 0.2368  val_top1 0.2326  val_top3 0.3612
+epoch  15  lr 0.00122  loss 4.3998
+epoch  16  lr 0.00090  loss 4.3900  train_top1 0.2388  val_top1 0.2358  val_top3 0.3632
+epoch  17  lr 0.00064  loss 4.3820
+epoch  18  lr 0.00045  loss 4.3757  train_top1 0.2394  val_top1 0.2363  val_top3 0.3640
+epoch  19  lr 0.00034  loss 4.3715
+epoch  20  lr 0.00030  loss 4.3697  train_top1 0.2402  val_top1 0.2370  val_top3 0.3640
+restored best checkpoint: epoch 20 val_top1 0.2370
+
+Top-1: train 0.2407  val 0.2370
+Top-3: train 0.3702  val 0.3640
+Parameters: 265559
+Model written: training\out\char_model_c8_v3000_h64.json
+Training seconds: 1259.63
+
+=== 生成抽样 ===
+  晚安 -> 晚安好的我们都不是我们一起去了一
+  在干嘛 -> 在干嘛我们都不是我们一起去了一起来
+  今天好累 -> 今天好累的我们都不是我们一起去了一起
+  我最近在学 -> 我最近在学校了一个月了一个月就是我们一
+  你吃饭 -> 你吃饭了我也不知道了我们都是不是我
+  下雨了 -> 下雨了我也是不是我们一起去了一起来
+  老板今天骂 -> 老板今天骂你了我们都不是我的人都是不是
