@@ -29,6 +29,7 @@ const header = [
   'const knowledgeEntries = []',
   'const dailyEntries = []',
   'const dailyExtraEntries = []',
+  'const kbV2Entries = []',
   'class SimpleKnowledgeBase { constructor() {} }',
   'class ReplyEngine { constructor() {} cancelStream() {} }',
   'const isCreativeRequest = function () { return false }',
@@ -36,7 +37,7 @@ const header = [
   'const cancelBenchmark = function () {}',
   'const formatBenchmark = function () { return "" }',
   'const fileReadArrayBuffer = async function () { return new ArrayBuffer(0) }',
-  'const storageGet = async function () { return "" }',
+  "const storageGet = function () { return Promise.resolve(globalThis.__tinyAiTestHistory || '') }",
   'const storageSet = async function () {}',
   'const charModelQMeta = {}',
   '',
@@ -63,7 +64,16 @@ check('has onDestroy', typeof pageDef.onDestroy === 'function')
 check('data has pausedReply', pageDef.data.pausedReply === false)
 
 // 熄屏时正在回复：必须停下来，并且记住“被打断了”
+// Startup must stay light: the knowledge base loads only on demand.
 let page = makePage()
+let knowledgeLoads = 0
+page.loadKnowledgeBase = function () {
+  knowledgeLoads++
+  return Promise.resolve(true)
+}
+page.onInit()
+check('onInit does not eager-load knowledge base', knowledgeLoads === 0, 'loads=' + knowledgeLoads)
+page = makePage()
 let cleared = 0
 const realSetTimeout = globalThis.setTimeout
 const realClearTimeout = globalThis.clearTimeout
@@ -129,11 +139,24 @@ page.messages = new Array(24).fill({ id: 1, role: 'ai', text: 'x', meta: '' })
 page.scrollToBottom()
 check('scrollToBottom bounded', page.scrollTop > 0 && page.scrollTop < 10000, String(page.scrollTop))
 
-// 消息上限收紧到 24
-check('MAX_MESSAGES is 24', /const MAX_MESSAGES = 24/.test(script))
+// 手表聊天列表保持轻量，避免消息越多 UI diff 越慢。
+check('MAX_MESSAGES is 12', /const MAX_MESSAGES = 12/.test(script))
 page = makePage()
 for (let i = 0; i < 40; i++) page.addMessage('ai', 'msg' + i, '')
-check('message list capped', page.messages.length === 24, String(page.messages.length))
+check('message list capped', page.messages.length === 12, String(page.messages.length))
+
+page = makePage()
+globalThis.__tinyAiTestHistory = JSON.stringify(
+  Array.from({ length: 20 }, function (_, i) { return { role: 'user', text: 'history' + i } })
+)
+page.loadChatHistory()
+await Promise.resolve()
+check(
+  'restored history is capped to the recent 12 messages',
+  page.messages.length === 12 && page.messages[0].text === 'history8' && page.messages[11].text === 'history19',
+  page.messages.length + ' ' + (page.messages[0] && page.messages[0].text) + ' ' + (page.messages[11] && page.messages[11].text)
+)
+delete globalThis.__tinyAiTestHistory
 
 console.log('')
 console.log('Checks: ' + checks + ', failures: ' + failures.length)

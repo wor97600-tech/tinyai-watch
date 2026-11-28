@@ -1,0 +1,16 @@
+[
+  {
+    "entryId": "k2-facts-mens-100m-record-holder",
+    "sourceKey": "world-athletics-records",
+    "checkedAt": "2026-11-28",
+    "factScope": "男子户外田径100米正式世界纪录保持者；不等同于所有运动项目或情境中的“世界最快的人”",
+    "volatility": "review_annual",
+    "reviewAfter": "2027-11-28",
+    "answerMustContain": [
+      "男子100米",
+      "截至2026-11-28",
+      "9.58秒"
+    ],
+    "sourceEvidence": "官方男子100米成年组历史榜单首位列示 Usain Bolt，成绩 9.58 秒。"
+  }
+]

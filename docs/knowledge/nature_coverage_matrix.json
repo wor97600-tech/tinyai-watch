@@ -1,0 +1,306 @@
+[
+  {
+    "domain": "nature",
+    "topic": "动物与生态",
+    "conceptKey": "platypus",
+    "plannedEntryId": "k2-nature-platypus",
+    "sourceKey": "smithsonian-zoo-animals",
+    "checkedAt": "2026-11-28"
+  },
+  {
+    "domain": "nature",
+    "topic": "动物与生态",
+    "conceptKey": "bat",
+    "plannedEntryId": "k2-nature-bat",
+    "sourceKey": "smithsonian-zoo-animals",
+    "checkedAt": "2026-11-28"
+  },
+  {
+    "domain": "nature",
+    "topic": "动物与生态",
+    "conceptKey": "penguin",
+    "plannedEntryId": "k2-nature-penguin",
+    "sourceKey": "smithsonian-zoo-animals",
+    "checkedAt": "2026-11-28"
+  },
+  {
+    "domain": "nature",
+    "topic": "动物与生态",
+    "conceptKey": "ostrich",
+    "plannedEntryId": "k2-nature-ostrich",
+    "sourceKey": "smithsonian-zoo-animals",
+    "checkedAt": "2026-11-28"
+  },
+  {
+    "domain": "nature",
+    "topic": "动物与生态",
+    "conceptKey": "owl-eyes",
+    "plannedEntryId": "k2-nature-owl-eyes",
+    "sourceKey": "smithsonian-zoo-animals",
+    "checkedAt": "2026-11-28"
+  },
+  {
+    "domain": "nature",
+    "topic": "动物与生态",
+    "conceptKey": "bee-pollination",
+    "plannedEntryId": "k2-nature-bee-pollination",
+    "sourceKey": "smithsonian-zoo-animals",
+    "checkedAt": "2026-11-28"
+  },
+  {
+    "domain": "nature",
+    "topic": "动物与生态",
+    "conceptKey": "butterfly-life",
+    "plannedEntryId": "k2-nature-butterfly-life",
+    "sourceKey": "smithsonian-zoo-animals",
+    "checkedAt": "2026-11-28"
+  },
+  {
+    "domain": "nature",
+    "topic": "动物与生态",
+    "conceptKey": "frog-life",
+    "plannedEntryId": "k2-nature-frog-life",
+    "sourceKey": "smithsonian-zoo-animals",
+    "checkedAt": "2026-11-28"
+  },
+  {
+    "domain": "nature",
+    "topic": "动物与生态",
+    "conceptKey": "turtle-shell",
+    "plannedEntryId": "k2-nature-turtle-shell",
+    "sourceKey": "smithsonian-zoo-animals",
+    "checkedAt": "2026-11-28"
+  },
+  {
+    "domain": "nature",
+    "topic": "动物与生态",
+    "conceptKey": "snake-shed",
+    "plannedEntryId": "k2-nature-snake-shed",
+    "sourceKey": "smithsonian-zoo-animals",
+    "checkedAt": "2026-11-28"
+  },
+  {
+    "domain": "nature",
+    "topic": "动物与生态",
+    "conceptKey": "gecko-feet",
+    "plannedEntryId": "k2-nature-gecko-feet",
+    "sourceKey": "smithsonian-zoo-animals",
+    "checkedAt": "2026-11-28"
+  },
+  {
+    "domain": "nature",
+    "topic": "动物与生态",
+    "conceptKey": "earthworm-soil",
+    "plannedEntryId": "k2-nature-earthworm-soil",
+    "sourceKey": "smithsonian-zoo-animals",
+    "checkedAt": "2026-11-28"
+  },
+  {
+    "domain": "nature",
+    "topic": "动物与生态",
+    "conceptKey": "spider-legs",
+    "plannedEntryId": "k2-nature-spider-legs",
+    "sourceKey": "smithsonian-zoo-animals",
+    "checkedAt": "2026-11-28"
+  },
+  {
+    "domain": "nature",
+    "topic": "动物与生态",
+    "conceptKey": "ant-colony",
+    "plannedEntryId": "k2-nature-ant-colony",
+    "sourceKey": "smithsonian-zoo-animals",
+    "checkedAt": "2026-11-28"
+  },
+  {
+    "domain": "nature",
+    "topic": "动物与生态",
+    "conceptKey": "mosquito-life",
+    "plannedEntryId": "k2-nature-mosquito-life",
+    "sourceKey": "smithsonian-zoo-animals",
+    "checkedAt": "2026-11-28"
+  },
+  {
+    "domain": "nature",
+    "topic": "动物与生态",
+    "conceptKey": "camel-hump",
+    "plannedEntryId": "k2-nature-camel-hump",
+    "sourceKey": "smithsonian-zoo-animals",
+    "checkedAt": "2026-11-28"
+  },
+  {
+    "domain": "nature",
+    "topic": "动物与生态",
+    "conceptKey": "giraffe-neck",
+    "plannedEntryId": "k2-nature-giraffe-neck",
+    "sourceKey": "smithsonian-zoo-animals",
+    "checkedAt": "2026-11-28"
+  },
+  {
+    "domain": "nature",
+    "topic": "动物与生态",
+    "conceptKey": "elephant-trunk",
+    "plannedEntryId": "k2-nature-elephant-trunk",
+    "sourceKey": "smithsonian-zoo-animals",
+    "checkedAt": "2026-11-28"
+  },
+  {
+    "domain": "nature",
+    "topic": "植物与生态",
+    "conceptKey": "pollination",
+    "plannedEntryId": "k2-nature-pollination",
+    "sourceKey": "openstax-biology",
+    "checkedAt": "2026-11-28"
+  },
+  {
+    "domain": "nature",
+    "topic": "植物与生态",
+    "conceptKey": "seed-dispersal",
+    "plannedEntryId": "k2-nature-seed-dispersal",
+    "sourceKey": "openstax-biology",
+    "checkedAt": "2026-11-28"
+  },
+  {
+    "domain": "nature",
+    "topic": "植物与生态",
+    "conceptKey": "stomata",
+    "plannedEntryId": "k2-nature-stomata",
+    "sourceKey": "openstax-biology",
+    "checkedAt": "2026-11-28"
+  },
+  {
+    "domain": "nature",
+    "topic": "植物与生态",
+    "conceptKey": "xylem",
+    "plannedEntryId": "k2-nature-xylem",
+    "sourceKey": "openstax-biology",
+    "checkedAt": "2026-11-28"
+  },
+  {
+    "domain": "nature",
+    "topic": "植物与生态",
+    "conceptKey": "phloem",
+    "plannedEntryId": "k2-nature-phloem",
+    "sourceKey": "openstax-biology",
+    "checkedAt": "2026-11-28"
+  },
+  {
+    "domain": "nature",
+    "topic": "植物与生态",
+    "conceptKey": "root-hair",
+    "plannedEntryId": "k2-nature-root-hair",
+    "sourceKey": "openstax-biology",
+    "checkedAt": "2026-11-28"
+  },
+  {
+    "domain": "nature",
+    "topic": "植物与生态",
+    "conceptKey": "seed-germination",
+    "plannedEntryId": "k2-nature-seed-germination",
+    "sourceKey": "openstax-biology",
+    "checkedAt": "2026-11-28"
+  },
+  {
+    "domain": "nature",
+    "topic": "植物与生态",
+    "conceptKey": "moss-spores",
+    "plannedEntryId": "k2-nature-moss-spores",
+    "sourceKey": "openstax-biology",
+    "checkedAt": "2026-11-28"
+  },
+  {
+    "domain": "nature",
+    "topic": "植物与生态",
+    "conceptKey": "fern-spores",
+    "plannedEntryId": "k2-nature-fern-spores",
+    "sourceKey": "openstax-biology",
+    "checkedAt": "2026-11-28"
+  },
+  {
+    "domain": "nature",
+    "topic": "植物与生态",
+    "conceptKey": "gymnosperm",
+    "plannedEntryId": "k2-nature-gymnosperm",
+    "sourceKey": "openstax-biology",
+    "checkedAt": "2026-11-28"
+  },
+  {
+    "domain": "nature",
+    "topic": "植物与生态",
+    "conceptKey": "angiosperm",
+    "plannedEntryId": "k2-nature-angiosperm",
+    "sourceKey": "openstax-biology",
+    "checkedAt": "2026-11-28"
+  },
+  {
+    "domain": "nature",
+    "topic": "植物与生态",
+    "conceptKey": "bamboo-grass",
+    "plannedEntryId": "k2-nature-bamboo-grass",
+    "sourceKey": "openstax-biology",
+    "checkedAt": "2026-11-28"
+  },
+  {
+    "domain": "nature",
+    "topic": "植物与生态",
+    "conceptKey": "tree-rings",
+    "plannedEntryId": "k2-nature-tree-rings",
+    "sourceKey": "openstax-biology",
+    "checkedAt": "2026-11-28"
+  },
+  {
+    "domain": "nature",
+    "topic": "植物与生态",
+    "conceptKey": "fungus-plant",
+    "plannedEntryId": "k2-nature-fungus-plant",
+    "sourceKey": "openstax-biology",
+    "checkedAt": "2026-11-28"
+  },
+  {
+    "domain": "nature",
+    "topic": "植物与生态",
+    "conceptKey": "decomposer",
+    "plannedEntryId": "k2-nature-decomposer",
+    "sourceKey": "openstax-biology",
+    "checkedAt": "2026-11-28"
+  },
+  {
+    "domain": "nature",
+    "topic": "植物与生态",
+    "conceptKey": "habitat",
+    "plannedEntryId": "k2-nature-habitat",
+    "sourceKey": "openstax-biology",
+    "checkedAt": "2026-11-28"
+  },
+  {
+    "domain": "nature",
+    "topic": "植物与生态",
+    "conceptKey": "camouflage",
+    "plannedEntryId": "k2-nature-camouflage",
+    "sourceKey": "openstax-biology",
+    "checkedAt": "2026-11-28"
+  },
+  {
+    "domain": "nature",
+    "topic": "植物与生态",
+    "conceptKey": "symbiosis",
+    "plannedEntryId": "k2-nature-symbiosis",
+    "sourceKey": "openstax-biology",
+    "checkedAt": "2026-11-28"
+  },
+  {
+    "domain": "nature",
+    "topic": "动物与生态",
+    "conceptKey": "migration",
+    "plannedEntryId": "k2-nature-migration",
+    "sourceKey": "smithsonian-zoo-animals",
+    "checkedAt": "2026-11-28"
+  },
+  {
+    "domain": "nature",
+    "topic": "植物与生态",
+    "conceptKey": "food-web",
+    "plannedEntryId": "k2-nature-food-web",
+    "sourceKey": "openstax-biology",
+    "checkedAt": "2026-11-28"
+  }
+]

@@ -1,10 +1,7 @@
 <script>
   import { parseBinaryModel } from '../../ai/model_loader.js'
   import { CharPredictor } from '../../ai/char_predictor.js'
-  import knowledgeEntries from '../../assets/knowledge_base.js'
-  import dailyEntries from '../../assets/daily_kb.js'
-  import dailyExtraEntries from '../../assets/daily_kb_extra.js'
-  import { SimpleKnowledgeBase } from '../../ai/simple_kb.js'
+  import { CategoryKnowledgeBase } from '../../ai/category_kb.js'
   import { ReplyEngine, isCreativeRequest } from '../../ai/reply_engine.js'
   import { runBenchmarkAsync, cancelBenchmark, formatBenchmark } from '../../ai/benchmark.js'
   import { fileReadArrayBuffer, storageGet, storageSet } from '../../platform/blueos_io.js'
@@ -12,16 +9,22 @@
   import { getCandidates } from '../../input/pinyin_engine.js'
 
   const CHAT_HISTORY_KEY = 'tinyai_chat_history_v1'
-  const MAX_MESSAGES = 24
+  const MAX_MESSAGES = 12
   const KEYBOARD_SOURCE_KEY = 'tinyai_keyboard_source_v1'
 
   let knowledgeBase = null
   let charPredictor = null
   let charLoadPromise = null
+  let kbLoadPromise = null
   let replyEngine = null
   let saveTimer = null
   // 回复看门狗：thinking 卡死时兜底复位，否则整页会变成“发了没反应”。
   let replyWatchdog = null
+  let knowledgeStatsTimer = null
+  let knowledgeStatsRunId = 0
+  let replyStartTimer = null
+  let officialInputClearRunId = 0
+  let officialInputSeedRunId = 0
 
   function formatCount(value) {
     const text = String(value)
@@ -35,6 +38,87 @@
     return out
   }
 
+  function percentileValue(sorted, ratio) {
+    if (sorted.length === 0) {
+      return 0
+    }
+    const index = Math.min(
+      sorted.length - 1,
+      Math.max(0, Math.ceil(sorted.length * ratio) - 1)
+    )
+    return sorted[index]
+  }
+
+  // 运行时只常驻 base 和命中的一个领域分片；路径必须写成静态字符串，
+  // 这样打包器才能把对应资源带进 RPK。
+  function loadKnowledgeShard(domain) {
+    switch (domain) {
+      case 'base':
+        return fileReadArrayBuffer('/assets/kb_shards/base.bin', 3000)
+      case 'food':
+        return fileReadArrayBuffer('/assets/kb_shards/food.bin', 3000)
+      case 'health':
+        return fileReadArrayBuffer('/assets/kb_shards/health.bin', 3000)
+      case 'emotion':
+        return fileReadArrayBuffer('/assets/kb_shards/emotion.bin', 3000)
+      case 'relation':
+        return fileReadArrayBuffer('/assets/kb_shards/relation.bin', 3000)
+      case 'work':
+        return fileReadArrayBuffer('/assets/kb_shards/work.bin', 3000)
+      case 'study':
+        return fileReadArrayBuffer('/assets/kb_shards/study.bin', 3000)
+      case 'digital':
+        return fileReadArrayBuffer('/assets/kb_shards/digital.bin', 3000)
+      case 'home':
+        return fileReadArrayBuffer('/assets/kb_shards/home.bin', 3000)
+      case 'travel':
+        return fileReadArrayBuffer('/assets/kb_shards/travel.bin', 3000)
+      case 'consumer':
+        return fileReadArrayBuffer('/assets/kb_shards/consumer.bin', 3000)
+      case 'law':
+        return fileReadArrayBuffer('/assets/kb_shards/law.bin', 3000)
+      case 'science':
+        return fileReadArrayBuffer('/assets/kb_shards/science.bin', 3000)
+      case 'nature':
+        return fileReadArrayBuffer('/assets/kb_shards/nature.bin', 3000)
+      case 'facts':
+        return fileReadArrayBuffer('/assets/kb_shards/facts.bin', 3000)
+      case 'math':
+        return fileReadArrayBuffer('/assets/kb_shards/math.bin', 3000)
+      case 'physics':
+        return fileReadArrayBuffer('/assets/kb_shards/physics.bin', 3000)
+      case 'chemistry':
+        return fileReadArrayBuffer('/assets/kb_shards/chemistry.bin', 3000)
+      case 'biology':
+        return fileReadArrayBuffer('/assets/kb_shards/biology.bin', 3000)
+      case 'geography':
+        return fileReadArrayBuffer('/assets/kb_shards/geography.bin', 3000)
+      case 'history':
+        return fileReadArrayBuffer('/assets/kb_shards/history.bin', 3000)
+      case 'politics':
+        return fileReadArrayBuffer('/assets/kb_shards/politics.bin', 3000)
+      case 'chinese':
+        return fileReadArrayBuffer('/assets/kb_shards/chinese.bin', 3000)
+      case 'english':
+        return fileReadArrayBuffer('/assets/kb_shards/english.bin', 3000)
+      case 'information':
+        return fileReadArrayBuffer('/assets/kb_shards/information.bin', 3000)
+      case 'technology':
+        return fileReadArrayBuffer('/assets/kb_shards/technology.bin', 3000)
+      case 'music':
+        return fileReadArrayBuffer('/assets/kb_shards/music.bin', 3000)
+      case 'art':
+        return fileReadArrayBuffer('/assets/kb_shards/art.bin', 3000)
+      case 'pe':
+        return fileReadArrayBuffer('/assets/kb_shards/pe.bin', 3000)
+      case 'labor':
+        return fileReadArrayBuffer('/assets/kb_shards/labor.bin', 3000)
+      case 'practice':
+        return fileReadArrayBuffer('/assets/kb_shards/practice.bin', 3000)
+      default:
+        return Promise.reject(new Error('未知知识库领域：' + domain))
+    }
+  }
   // 系统输入法回调的数据形状在不同固件上不一致：可能是字符串、{value}、
   // {detail:{value}} 或事件对象。这里逐个兜底，认不出来就返回 null，避免清空已有内容。
   function extractInputValue(event) {
@@ -119,21 +203,28 @@
       this.updateStatus()
       this.loadChatHistory()
       this.loadKeyboardSource()
-      // 轻量检索只持有条目文本，构建是常数级开销，可以放心在启动时建。
-      this.loadKnowledgeBase()
+      // Keep startup light: load the packed KB on the first real query.
     },
 
     // 熄屏 / 切到后台：把会持续占资源的东西全部收掉。
     // 之前没有这个处理，熄屏后系统输入法会话和流式定时器还挂在后台，
     // 手表过一会儿就整机卡死。
     onHide() {
-      this.pausedReply = this.thinking
+      this.cancelKnowledgeStats()
+      this.cancelReplyStart()
+      this.cancelOfficialInputClear()
+      // 隐藏统计被切后台取消，不算“回复说了一半”。
+      this.pausedReply = this.thinking && this.streamingMeta !== '知识库 · 本机实测'
       this.disarmReplyWatchdog()
       try {
         if (replyEngine) {
           replyEngine.cancelStream()
         }
       } catch (error) {}
+      // 切后台立刻释放唯一常驻分片；回前台后再按查询懒加载。
+      if (knowledgeBase && typeof knowledgeBase.releaseDomain === 'function') {
+        knowledgeBase.releaseDomain()
+      }
       if (this.thinking) {
         this.thinking = false
         this.streamingText = ''
@@ -177,19 +268,14 @@
     toggleToyMode(text) {
       const self = this
       const enable = /^(纯模型|玩具模式|慢速模式)$/.test(text)
-      this.addMessage('user', text, '')
       this.errorMessage = ''
       if (!enable) {
-        if (replyEngine) {
-          replyEngine.setToyMode(false)
-        }
-        this.toyMode = false
-        this.updateStatus()
-        this.addMessage('ai', '已回到正常模式，知识库和规则重新接管。', '纯模型 · 模式切换')
-        this.scrollToBottom()
+        this.switchToNormal(text)
         return
       }
       this.thinking = true
+      this.streamingText = ''
+      this.streamingMeta = ''
       this.armReplyWatchdog()
       this.scrollToBottom()
       this.loadCharModel().then(function (ok) {
@@ -224,7 +310,7 @@
       })
     },
 
-    switchToNormal(text) {
+    switchToNormal() {
       this.disarmReplyWatchdog()
       if (replyEngine) {
         replyEngine.cancelStream()
@@ -234,31 +320,77 @@
       this.thinking = false
       this.streamingText = ''
       this.streamingMeta = ''
-      this.addMessage('user', text, '')
       this.updateStatus()
       this.addMessage('ai', '已回到正常模式，知识库和规则重新接管。', '模式切换')
       this.scrollToBottom()
     },
 
-    loadKnowledgeBase() {
-      if (this.kbReady) {
-        return
+    loadKnowledgeBase(text) {
+      const self = this
+      this.kbErrorMessage = ''
+
+      // 路由表很小，只初始化一次；每次查询只按路由加载一个分片。
+      if (!kbLoadPromise) {
+        kbLoadPromise = fileReadArrayBuffer('/assets/kb_router.bin', 5000)
+          .then(function (data) {
+            let binary = data
+            return new Promise(function (resolve, reject) {
+              // 先把首屏让出去，再解析路由并建立基础分片。
+              setTimeout(function () {
+                try {
+                  knowledgeBase = new CategoryKnowledgeBase(binary)
+                  knowledgeBase.setShardLoader(loadKnowledgeShard)
+                  binary = null
+                  resolve(true)
+                } catch (error) {
+                  binary = null
+                  reject(error)
+                }
+              }, 0)
+            })
+          })
+          .catch(function (error) {
+            self.kbErrorMessage = error && error.message ? error.message : String(error)
+            self.errorMessage = '知识库路由加载失败：' + self.kbErrorMessage
+            // 下一次发送允许重试；这一次先交给规则回答。
+            kbLoadPromise = null
+            self.updateStatus()
+            return false
+          })
       }
-      try {
-        knowledgeBase = new SimpleKnowledgeBase(
-          knowledgeEntries.concat(dailyEntries, dailyExtraEntries)
-        )
+
+      return kbLoadPromise.then(function (ok) {
+        if (!ok || !knowledgeBase) {
+          return false
+        }
         if (replyEngine) {
           replyEngine.setKnowledgeBase(knowledgeBase)
         }
-        this.kbReady = true
-        this.kbErrorMessage = ''
-        this.updateStatus()
-      } catch (error) {
-        this.kbErrorMessage = error && error.message ? error.message : String(error)
-        this.errorMessage = '知识库初始化失败：' + this.kbErrorMessage
-        this.updateStatus()
-      }
+        return knowledgeBase.loadForQuery(text || '').then(function (loadResult) {
+          self.kbReady = true
+          self.kbErrorMessage = loadResult && loadResult.degraded && knowledgeBase.lastLoadError
+            ? (knowledgeBase.lastLoadError.message || String(knowledgeBase.lastLoadError))
+            : ''
+          self.errorMessage = self.kbErrorMessage
+            ? '知识库分片暂不可用，本次已切到基础库以保证稳定'
+            : ''
+          self.updateStatus()
+          return true
+        }).catch(function (error) {
+          self.kbErrorMessage = error && error.message ? error.message : String(error)
+          // 领域分片失败时，运行时已顺序回退到 base；不让整次回复失败。
+          if (knowledgeBase.baseKb) {
+            self.kbReady = true
+            self.errorMessage = '知识库领域加载失败，已用基础库回答：' + self.kbErrorMessage
+            self.updateStatus()
+            return true
+          }
+          self.kbReady = false
+          self.errorMessage = '知识库初始化失败：' + self.kbErrorMessage
+          self.updateStatus()
+          return false
+        })
+      })
     },
 
     loadCharModel() {
@@ -334,7 +466,9 @@
               })
             }
             if (out.length > 0 && self.messages.length === 0) {
-              self.messages = out
+              // 恢复历史也遵守屏幕列表上限，避免旧版本存下的 20 条一次性压垮渲染。
+              const recent = out.length > MAX_MESSAGES ? out.slice(out.length - MAX_MESSAGES) : out
+              self.messages = recent
               self.nextId = out.length + 1
               self.scrollToBottom()
             }
@@ -389,10 +523,18 @@
 
     onDestroy() {
       cancelBenchmark()
+      this.cancelKnowledgeStats()
+      this.cancelReplyStart()
+      this.cancelOfficialInputClear()
       this.disarmReplyWatchdog()
       if (replyEngine) {
         replyEngine.cancelStream()
       }
+      if (knowledgeBase && typeof knowledgeBase.releaseDomain === 'function') {
+        knowledgeBase.releaseDomain()
+      }
+      knowledgeBase = null
+      kbLoadPromise = null
       if (saveTimer) {
         clearTimeout(saveTimer)
         saveTimer = null
@@ -442,6 +584,7 @@
     },
 
     applyKeyboardSource(official, persist) {
+      this.cancelOfficialInputClear()
       // 切走之前先把没上屏的拼音落成正文，避免白打。
       this.commitPinyinAsText()
       // 切回离线键盘前，把系统输入法里已经打好的字收进正文。
@@ -456,6 +599,8 @@
       if (this.useOfficialKeyboard && official !== true) {
         this.releaseOfficialInputFocus()
       }
+      this.cancelOfficialInputClear()
+      this.suppressInputSync = false
       this.useOfficialKeyboard = official === true
       if (this.useOfficialKeyboard) {
         this.showKeyboard = false
@@ -497,7 +642,9 @@
     // 切到官方键盘时把正文写进原生框，只写这一次（之后完全不管它）。
     seedOfficialInput(text) {
       const self = this
+      const runId = ++officialInputSeedRunId
       const apply = function () {
+        if (runId !== officialInputSeedRunId) return
         try {
           if (self.$element) {
             const el = self.$element('chat-input')
@@ -512,13 +659,28 @@
       setTimeout(apply, 80)
     },
 
+    cancelReplyStart() {
+      if (replyStartTimer !== null) {
+        clearTimeout(replyStartTimer)
+        replyStartTimer = null
+      }
+    },
+
+    cancelOfficialInputClear() {
+      officialInputClearRunId++
+      officialInputSeedRunId++
+    },
+
     // 原生输入框只在“发送完 / 清空 / 切模式”时写一次，平时绝不回写，
     // 否则系统输入法会话会被打断，第二次就点不出来了。
     clearOfficialInput() {
       const self = this
+      this.cancelOfficialInputClear()
+      const runId = officialInputClearRunId
       // 清空过程中先屏蔽同步，避免 onchange 把刚才那句旧文字又塞回草稿。
       this.suppressInputSync = true
       const run = function () {
+        if (runId !== officialInputClearRunId) return
         try {
           if (!self.$element) {
             return
@@ -538,27 +700,29 @@
         } catch (error) {}
       }
       run()
-      // 重渲染后组件实例可能换新的，补一次，确保焦点真的放掉。
-      setTimeout(run, 60)
       // 光改 value，手表固件有时不刷新输入法的显示：发完一条框里还留着上一句。
       // 干脆把这个原生输入框整个卸掉再挂回来，新节点必然是空的。
       if (this.useOfficialKeyboard) {
         this.inputActive = false
         setTimeout(function () {
+          if (runId !== officialInputClearRunId) return
           if (!self.useOfficialKeyboard) {
             self.suppressInputSync = false
             return
           }
           self.inputActive = true
-          self.seedOfficialInput('')
           setTimeout(function () {
-            self.suppressInputSync = false
-          }, 120)
+            if (runId === officialInputClearRunId) {
+              self.suppressInputSync = false
+            }
+          }, 140)
         }, 80)
       } else {
         setTimeout(function () {
-          self.suppressInputSync = false
-        }, 120)
+          if (runId === officialInputClearRunId) {
+            self.suppressInputSync = false
+          }
+        }, 140)
       }
     },
 
@@ -767,17 +931,23 @@
         this.errorMessage = '上一条还在说，等它说完再发'
         return
       }
+
+      // 同一次更新提交气泡、思考状态，并移除带有旧文字的原生输入框。
+      this.errorMessage = ''
       this.draftText = ''
       this.updateDraftPreview()
+      this.addMessage('user', text, '')
+      this.thinking = true
+      this.streamingText = ''
+      this.streamingMeta = ''
+      this.armReplyWatchdog()
+      this.scrollToBottom()
       if (this.useOfficialKeyboard) {
         this.clearOfficialInput()
       }
+
       if (/^(正常模式|退出玩具|退出纯模型)$/i.test(text)) {
-        if (this.toyMode) {
-          this.switchToNormal(text)
-          return
-        }
-        this.toggleToyMode('正常模式')
+        this.switchToNormal()
         return
       }
       if (/^(纯模型|玩具模式|慢速模式)$/.test(text)) {
@@ -786,9 +956,8 @@
       }
       if (/^(跑分|基准|bench)$/i.test(text)) {
         // 隐藏的速度探针：只在本机跑矩阵乘，不上报。
-        this.addMessage('user', text, '')
-        this.errorMessage = ''
-        this.thinking = false
+        this.streamingText = '跑分中…'
+        this.streamingMeta = '基准 · 本机 JS'
         this.scrollToBottom()
         const self = this
         setTimeout(function () {
@@ -796,34 +965,140 @@
         }, 30)
         return
       }
-      this.errorMessage = ''
-      this.addMessage('user', text, '')
-      this.thinking = true
-      this.armReplyWatchdog()
-      this.scrollToBottom()
+      if (text === '知识库') {
+        // 低内存探针：只抽样当前唯一常驻分片，不轮换加载其他分片。
+        this.streamingText = '统计知识库…'
+        this.streamingMeta = '知识库 · 本机实测'
+        this.scrollToBottom()
+        const self = this
+        knowledgeStatsTimer = setTimeout(function () {
+          knowledgeStatsTimer = null
+          self.runKnowledgeStats()
+        }, 30)
+        return
+      }
 
+      const self = this
+      // 让原生界面先完成当前帧，再按问题类型加载单个知识分片并回复。
+      replyStartTimer = setTimeout(function () {
+        replyStartTimer = null
+        if (self.thinking) self.startSubmittedReply(text)
+      }, 120)
+    },
+
+    startSubmittedReply(text) {
       const self = this
       // 只有明确要求慢速推理或明确写诗/故事/续写时，才懒加载字符模型。
       // 普通聊天优先知识库和规则；模型加载失败也继续用查表兜底。
       const wantsModel =
         /慢速|神经网络|真推理|认真想/.test(text) || isCreativeRequest(text)
+      const startReply = function () {
+        self.buildReply(text)
+      }
       if (wantsModel && !this.charReady) {
-        this.loadCharModel().then(
-          function () {
-            self.buildReply(text)
-          },
-          function () {
-            self.buildReply(text)
-          }
-        )
+        // 串行加载，避免知识库和模型同时占内存；模型失败也继续走查表兜底。
+        this.loadKnowledgeBase(text)
+          .then(function () {
+            return self.loadCharModel()
+          })
+          .then(startReply, startReply)
         return
       }
-      setTimeout(function () {
-        if (!knowledgeBase) {
-          self.loadKnowledgeBase()
+      // reply() 内含同步检索。多轮聊天时列表更新和官方输入框重建更重，
+      // 不要在知识库加载完成的同一 UI 周期里开始检索，否则“思考中”与答案会合并绘制。
+      const renderSettleMs = Math.min(300, 180 + this.messages.length * 5)
+      this.loadKnowledgeBase(text)
+        .then(function () {
+          setTimeout(startReply, renderSettleMs)
+        })
+        .catch(function () {
+          setTimeout(startReply, renderSettleMs)
+        })
+    },
+
+    runKnowledgeStats() {
+      this.cancelKnowledgeStats()
+      const runId = knowledgeStatsRunId
+      const self = this
+      this.errorMessage = ''
+      this.thinking = true
+      this.streamingText = '统计知识库…'
+      this.streamingMeta = '知识库 · 本机实测'
+      this.armReplyWatchdog()
+      this.scrollToBottom()
+
+      const fail = function (error) {
+        if (runId !== knowledgeStatsRunId) {
+          return
         }
-        self.buildReply(text)
-      }, 30)
+        self.disarmReplyWatchdog()
+        self.thinking = false
+        self.streamingText = ''
+        self.streamingMeta = ''
+        knowledgeStatsTimer = null
+        const message = error && error.message ? error.message : String(error)
+        self.addMessage('ai', '知识库统计失败：' + message, '知识库 · 错误')
+      }
+
+      Promise.resolve()
+        .then(function () {
+          return self.loadKnowledgeBase('')
+        })
+        .then(function (ok) {
+          if (runId !== knowledgeStatsRunId) return null
+          if (!ok || !knowledgeBase) {
+            throw new Error(self.kbErrorMessage || '知识库未就绪')
+          }
+          if (!knowledgeBase.entryCount) {
+            throw new Error('知识库没有条目')
+          }
+          // 只测已经常驻的分片，避免手表 JS 堆内存被打爆。
+          return knowledgeBase.measureLoadedSample(16)
+        })
+        .then(function (sample) {
+          if (runId !== knowledgeStatsRunId || !sample) {
+            return
+          }
+          const sorted = sample.latencies.slice().sort(function (a, b) {
+            return a - b
+          })
+          const p50 = percentileValue(sorted, 0.5)
+          const p95 = percentileValue(sorted, 0.95)
+          const line =
+            '条目 ' +
+            knowledgeBase.entryCount +
+            ' · 建表 ' +
+            sample.peakBuildMs +
+            'ms · 查询 ' +
+            p50 +
+            'ms(p50) / ' +
+            p95 +
+            'ms(p95) · 候选 ' +
+            sample.candidateAverage
+          self.disarmReplyWatchdog()
+          self.thinking = false
+          self.streamingText = ''
+          self.streamingMeta = ''
+          knowledgeStatsTimer = null
+          self.addMessage('ai', line, '知识库 · 本机实测')
+          console.log(
+            '[TinyAI] kb stats ' +
+              line +
+              ' · max=' +
+              sorted[sorted.length - 1] +
+              'ms · candidateMax=' +
+              sample.candidateMax
+          )
+        })
+        .catch(fail)
+    },
+
+    cancelKnowledgeStats() {
+      knowledgeStatsRunId++
+      if (knowledgeStatsTimer) {
+        clearTimeout(knowledgeStatsTimer)
+        knowledgeStatsTimer = null
+      }
     },
 
     runBench() {
@@ -934,6 +1209,8 @@
 
     clearChat() {
       cancelBenchmark()
+      this.cancelKnowledgeStats()
+      this.cancelReplyStart()
       this.disarmReplyWatchdog()
       if (replyEngine) {
         replyEngine.cancelStream()

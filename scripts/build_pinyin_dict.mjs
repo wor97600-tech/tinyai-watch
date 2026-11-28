@@ -46,6 +46,20 @@ const EVERYDAY2 = (
   '下载 安装 更新 卸载 流量 套餐 话费 表盘 表带 戴好 摘下来 出门了 到家了 我到了 在路上'
 ).split(/\s+/).filter(Boolean)
 
+// 第三批高频词：基础学科、自然常识和常见聊天词。
+// 只增加候选，不改变按需建索引和候选上限，控制手表运行时内存。
+const EVERYDAY3 = (
+  '物理 化学 生物 数学 语文 英语 地理 历史 政治 信息 技术 科学 知识 学习 作业 考试 题目 答案 公式 定理 概念 原理 ' +
+  '导数 积分 函数 方程 几何 概率 统计 向量 数列 极限 集合 坐标 图像 斜率 面积 体积 周长 ' +
+  '力学 光学 电学 热学 声学 磁场 电场 电压 电流 电阻 功率 能量 动量 质量 速度 加速度 压强 密度 浮力 摩擦力 ' +
+  '原子 分子 离子 元素 化合物 反应 方程式 酸碱 盐类 金属 非金属 溶液 浓度 温度 熔点 沸点 ' +
+  '细胞 组织 器官 基因 遗传 进化 生态 细菌 病毒 真菌 动物 植物 微生物 昆虫 鸟类 鱼类 哺乳类 ' +
+  '光合作用 呼吸作用 有丝分裂 细胞膜 细胞核 食物链 食物网 能量流动 水循环 碳循环 大气层 地球 月球 太阳 恒星 行星 ' +
+  '知识点 重点 难点 课本 课堂 笔记 复习 预习 背诵 默写 练习 阅读 写作 作文 单词 语法 翻译 成绩 分数 排名 ' +
+  '心情 饮料 签到 导数 世界最快 物理题 化学题 生物题 数学题 基础题 常识题 选择题 判断题 填空题 ' +
+  '早餐 午餐 晚餐 夜宵 零食 水果 蔬菜 牛奶 面包 米饭 鸡蛋 肉类 口渴 饥饿 睡眠 早起 午休 洗手 ' +
+  '地址 联系 位置 地图 订单 购物 价格 质量 安全 账号 密码 通知 提醒 日程 计划 记录 搜索 分享 收藏'
+).split(/\s+/).filter(Boolean)
 const TONE = {
   'ā': 'a', 'á': 'a', 'ǎ': 'a', 'à': 'a', 'a': 'a',
   'ē': 'e', 'é': 'e', 'ě': 'e', 'è': 'e', 'e': 'e',
@@ -240,7 +254,18 @@ for (const word of EVERYDAY2) {
   }
   wordCandidates.push({ word, freq: BOOST + (wordFreq.get(word) || 0), pinyin: syls.join('') })
 }
-wordCandidates.sort((a, b) => b.freq - a.freq)
+for (const word of EVERYDAY3) {
+  if (word.length < 2 || word.length > 4 || !allHan(word)) {
+    dropped.push(word + '(格式3)')
+    continue
+  }
+  const syls = pinyinOf(word, true)
+  if (!syls) {
+    dropped.push(word + '(缺字3)')
+    continue
+  }
+  wordCandidates.push({ word, freq: BOOST + 2000 + (wordFreq.get(word) || 0), pinyin: syls.join('') })
+}wordCandidates.sort((a, b) => b.freq - a.freq)
 
 const words = []
 const seenWordKey = new Set()
@@ -347,4 +372,3 @@ for (const w of check) {
   const syls = pinyinOf(w, true)
   console.log('  ' + w + ' -> ' + (syls ? syls.join(' ') : 'MISSING'))
 }
-

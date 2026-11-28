@@ -21,7 +21,7 @@ export default [
     id: 'why-local',
     question: '为什么坚持本地推理',
     answer: '本地推理不依赖网络，响应稳定，数据不出设备；代价是模型必须很小，并且受手表算力限制。',
-    keywords: ['本地', '离线', '隐私', '原因'],
+    keywords: ['本地', '离线', '隐私', '为什么低'],
   },
   {
     id: 'phase-one',
@@ -38,8 +38,8 @@ export default [
   {
     id: 'model-size',
     question: '字符模型有多大',
-    answer: '当前字符模型 int8 为 314,077 字节（float32 为 1,077,273 字节），参数量 265,559，词表 3,003，隐藏层 64，嵌入维度 20，上下文 8 个字。语料是 LCCC 清洗后的日常对话加古诗。',
-    keywords: ['模型', '大小', '字节', '参数量', '词表', '112077'],
+    answer: '当前字符模型 int8 为 314,077 字节（float32 为 1,077,273），参数量 265,559，词表 1,003。',
+    keywords: ['模型', '大小', '模型多大', '字节', '参数量', '词表'],
   },
   {
     id: 'vocab-size',
@@ -56,14 +56,14 @@ export default [
   {
     id: 'accuracy',
     question: '验证准确率是多少',
-    answer: '当前模型训练 Top-1 为 27.30%，验证 Top-1 为 26.95%，验证 Top-3 为 41.08%；验证集句子不参与训练，模型主要学到的是局部搭配，不是通用理解。',
+    answer: '当前模型训练 Top-1 为 27.30%，验证 Top-1 为 26.95%；验证集不参与训练，模型主要学局部搭配。',
     keywords: ['准确率', '验证', 'Top1', 'Top3'],
   },
   {
     id: 'low-accuracy',
     question: '为什么准确率不高',
     answer: '语料是 LCCC base 清洗后的约 200 万字、21 万行日常对话，词表 1,003；8 字上下文仍然只能学局部搭配，接长了容易绕回高频字。',
-    keywords: ['准确率', '低', '为什么低', '不高', '原因', '语料', '泛化'],
+    keywords: ['准确率', '低', '不高', '为什么低', '语料', '泛化'],
   },
   {
     id: 'train-model',
@@ -74,7 +74,7 @@ export default [
   {
     id: 'export-model',
     question: '模型怎么导出',
-    answer: '训练脚本输出 JSON，node scripts/pack_model.js 生成 float32 的 TAI1，quantize_model.js 再生成 int8 的 TAI2，同时输出 JSON 和元数据模块。',
+    answer: '训练脚本输出 JSON，pack_model.js 生成 TAI1，quantize_model.js 生成 int8 的 TAI2。',
     keywords: ['导出', '打包', 'TAI1', '二进制'],
   },
   {
@@ -146,7 +146,7 @@ export default [
   {
     id: 'build-rpk',
     question: '怎么编译 RPK',
-    answer: '使用 BlueOS Studio 自带 blueos-pack 执行 build，指定 debug 模式和 watch-round 或 watch-square。',
+    answer: '使用 BlueOS Studio 的 blueos-pack 执行 build，并选择 debug 模式和表盘形状。',
     keywords: ['编译', '打包', 'build', 'blueos-pack'],
   },
   {
@@ -195,7 +195,7 @@ export default [
     id: 'tf-idf',
     question: '什么是 TF-IDF',
     answer: 'TF-IDF 用词频和逆文档频率给词加权，常见于文本检索，让有区分度的词获得更高权重。',
-    keywords: ['TF-IDF', '检索', '词频', '文本'],
+    keywords: ['TF-IDF', '什么是 TF-IDF', '检索', '词频', '文本'],
   },
   {
     id: 'cosine',
@@ -230,7 +230,7 @@ export default [
   {
     id: 'own-corpus',
     question: '怎么换成自己的语料',
-    answer: '把语料清洗成纯汉字文本后运行 training/train_char_model.py，再跑 pack_model.js、quantize_model.js 和 build_lookup.js，最后编译安装新的 RPK。',
+    answer: '把语料清洗成纯汉字文本，运行训练脚本后依次打包、量化和生成查找表，再编译新 RPK。',
     keywords: ['语料', '替换', '训练', 'corpus'],
   },
   {
@@ -290,13 +290,13 @@ export default [
   {
     id: 'kb-expand',
     question: '知识库怎么扩容',
-    answer: '日常问题加到 daily_kb_extra.js，项目知识加到 knowledge_base.js；每条写清 question、answer 和 keywords，再重新跑知识库与回复测试。',
+    answer: '新增内容放到 kb 数据分片，每条写清问答和关键词，再运行构建脚本与全量测试。',
     keywords: ['知识库', '扩容', '条目', '索引'],
   },
   {
     id: 'kb-add',
     question: '怎么添加知识条目',
-    answer: '日常问题优先加到 daily_kb_extra.js，项目知识加到 knowledge_base.js；按 id、question、answer、keywords 追加后，跑 npm run check:kb 和 npm run check:reply。',
+    answer: '在 scripts/kb_data 对应领域文件中追加条目，运行构建脚本后再跑知识库和回复测试。',
     keywords: ['知识库', '添加', '条目', 'keywords'],
   },
   {

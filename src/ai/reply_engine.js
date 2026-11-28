@@ -1,4 +1,4 @@
-import { tokenize } from './knowledge_base.js'
+import { tokenize } from './tokenizer.js'
 import { chatIntents, continuationFallbacks, dailyStatements, poetryPairs, questionMissReplies } from '../assets/chat_patterns.js'
 import { memePatterns } from '../assets/meme_patterns.js'
 import lookupTable from '../assets/lookup_table.js'
@@ -429,6 +429,11 @@ export class ReplyEngine {
       return arithmetic
     }
 
+    const homework = this.tryHomework(text)
+    if (homework) {
+      return homework
+    }
+
     const time = this.tryTime(text)
     if (time) {
       return time
@@ -562,6 +567,33 @@ export class ReplyEngine {
       formatNumber(left) + ' ' + operator + ' ' + formatNumber(right) + ' = ' + formatNumber(value),
       '本地计算',
       'arithmetic'
+    )
+  }
+
+  // 知识库只回答基础概念，不代写作业或做具体题目。
+  // 单步算术已经由 tryArithmetic 处理，所以这里只拦明确的学生作业请求。
+  tryHomework(text) {
+    const assignment =
+      /(求下列|解方程|证明题|作业答案|计算题|填空题|应用题|求导|求积分|计算积分|化简|因式分解|帮我做题|做作业|解题过程|帮我写作业)/.test(
+        text
+      ) ||
+      /(帮我|替我|给我).{0,10}(做|解|计算|算一下).{0,12}(题|作业|题目|数学题|物理题|化学题)/.test(text) ||
+      /(这道|这题|题目|作业题|计算题|练习题).{0,24}(怎么做|怎么写|怎么算|答案|解答|步骤|[=＝<>+×÷])/i.test(text) ||
+      /选择题.{0,8}(选哪个|选什么|答案)/.test(text) ||
+      /(求解.{0,12}(方程|不等式|题目|函数)|解不等式|解方程|解一下这道题|解一下这题)/.test(text) ||
+      /[a-z]\s*(?:[=<>]|[+*/])/i.test(text) ||
+      /(平方|立方|方程|不等式|函数|因式|根号).{0,12}(等于|=|＝)/.test(text) ||
+      /求.{0,8}(平方根|立方根)/.test(text) ||
+      /(证明|求证)(?!.{0,6}(方法|定义|意思|是什么))[^，。！？]{2,20}/.test(text) ||
+      /(翻译一下|翻译成|帮我翻译)/.test(text) ||
+      /(帮我写作文|代写作文|写一篇作文|(帮我|给我).{0,4}(写|写一篇).{0,6}作文)/.test(text)
+    if (!assignment) {
+      return null
+    }
+    return this.result(
+      '我只能回答基础知识，作业题和复杂计算没法替你作答。',
+      '基础学习 · 拒绝作业题',
+      'homework'
     )
   }
 
@@ -1051,7 +1083,10 @@ export class ReplyEngine {
     if (!top) {
       return null
     }
-    const index = this.findEntryIndex(top.id)
+    const index =
+      typeof top.index === 'number' && top.index >= 0
+        ? top.index
+        : this.findEntryIndex(top.id)
     const overlap = index >= 0 ? this.overlapCount(text, index) : 0
     const percent = Math.round(top.score * 100)
     // 轻量检索的打分尺度和 TF-IDF 不同，用更高的门槛避免常见字误命中。
@@ -1087,6 +1122,9 @@ export class ReplyEngine {
   }
 
   findEntryById(id) {
+    if (this.kb && typeof this.kb.findEntryById === 'function') {
+      return this.kb.findEntryById(id)
+    }
     const entries = this.kb && this.kb.entries ? this.kb.entries : []
     for (let i = 0; i < entries.length; i++) {
       if (entries[i].id === id) {
@@ -1097,6 +1135,9 @@ export class ReplyEngine {
   }
 
   findEntryIndex(id) {
+    if (this.kb && typeof this.kb.findEntryIndex === 'function') {
+      return this.kb.findEntryIndex(id)
+    }
     const entries = this.kb && this.kb.entries ? this.kb.entries : []
     for (let i = 0; i < entries.length; i++) {
       if (entries[i].id === id) {

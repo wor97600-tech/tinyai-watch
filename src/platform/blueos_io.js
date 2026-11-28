@@ -1,5 +1,6 @@
 import storage from '@blueos.storage.storage'
 import file from '@blueos.storage.file'
+import { normalizeBinaryResult } from './binary_result.js'
 
 const DEFAULT_TIMEOUT_MS = 2500
 
@@ -102,7 +103,9 @@ export function fileReadText(uri, timeoutMs) {
 }
 
 export function fileReadArrayBuffer(uri, timeoutMs) {
-  return callWithCallbacks(file.readArrayBuffer, { uri: uri }, 'file.readArrayBuffer', timeoutMs)
+  return callWithCallbacks(file.readArrayBuffer, { uri: uri }, 'file.readArrayBuffer', timeoutMs).then(
+    normalizeBinaryResult
+  )
 }
 
 export function fileWriteText(uri, text, timeoutMs) {

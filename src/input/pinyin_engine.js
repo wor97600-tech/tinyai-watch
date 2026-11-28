@@ -3,6 +3,7 @@
 // 运行时只做一次 split 解析，不再在手表上拆 80KB 大表 + 排序 6000 个键，
 // 避免第一次按键时卡住甚至被系统杀掉。
 import { charIndex, wordIndex } from '../assets/pinyin_index.js'
+import { wordIndexExtra } from '../assets/pinyin_extra.js'
 
 export const MAX_PINYIN_LENGTH = 24
 
@@ -18,8 +19,8 @@ let charKeys = []
 let cache = {}
 let cacheOrder = []
 
-function parseText(text, splitChars) {
-  const map = {}
+function parseText(text, splitChars, target) {
+  const map = target || {}
   if (!text) {
     return map
   }
@@ -38,7 +39,11 @@ function parseText(text, splitChars) {
     if (!pinyin || !raw) {
       continue
     }
-    map[pinyin] = splitChars ? raw.split('') : [raw]
+    const values = splitChars ? raw.split('') : raw.split('|')
+    if (!map[pinyin]) map[pinyin] = []
+    for (let j = 0; j < values.length; j++) {
+      if (values[j] && map[pinyin].indexOf(values[j]) === -1) map[pinyin].push(values[j])
+    }
   }
   return map
 }
@@ -56,7 +61,8 @@ function ensureIndexes() {
     return
   }
   charMap = parseText(charIndex, true)
-  wordMap = parseText(wordIndex, false)
+  wordMap = parseText(wordIndexExtra, false)
+  parseText(wordIndex, false, wordMap)
   charKeys = Object.keys(charMap).sort(compareKey)
   wordKeys = Object.keys(wordMap).sort(compareKey)
 }

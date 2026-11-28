@@ -37,6 +37,7 @@ const header = [
   'const knowledgeEntries = []',
   'const dailyEntries = []',
   'const dailyExtraEntries = []',
+  'const kbV2Entries = []',
   'class SimpleKnowledgeBase { constructor() {} }',
   'class ReplyEngine { constructor() {} cancelStream() {} }',
   'const isCreativeRequest = function () { return false }',
@@ -152,11 +153,15 @@ check('thinking gate shows hint', /还在说/.test(String(page.errorMessage)), S
 
 // 看门狗：超时后强制复位 thinking
 const realSetTimeout = globalThis.setTimeout
+const realClearTimeout = globalThis.clearTimeout
 let captured = null
 let cleared = 0
-globalThis.setTimeout = function (fn) {
+const scheduled = []
+globalThis.setTimeout = function (fn, delay) {
   captured = fn
-  return { fake: true }
+  const task = { fake: true, fn: fn, delay: delay }
+  scheduled.push(task)
+  return task
 }
 globalThis.clearTimeout = function () {
   cleared++
@@ -171,6 +176,51 @@ check('watchdog resets thinking', page.thinking === false)
 check('watchdog adds fallback message', page.messages.length === before + 1, String(page.messages.length))
 check('watchdog clears streaming', page.streamingText === '')
 
+// 整句“知识库”必须先同步显示用户气泡和统计中的状态，不能等统计完成才渲染。
+scheduled.length = 0
+page = makePage()
+page.useOfficialKeyboard = true
+page.submitText('知识库')
+const immediateUserMessages = page.messages.filter(function (message) { return message.role === 'user' })
+check('knowledge command immediately adds one user bubble', immediateUserMessages.length === 1 && immediateUserMessages[0].text === '知识库')
+check('knowledge command immediately shows thinking state', page.thinking === true && page.streamingText === '统计知识库…')
+check('knowledge command also removes old native input immediately', page.inputActive === false)
+check('knowledge command schedules deferred UI work', scheduled.length >= 3, String(scheduled.length))
+page.cancelKnowledgeStats()
+page.cancelOfficialInputClear()
+page.disarmReplyWatchdog()
+
+// 发送普通消息时，加载知识库必须等到首轮界面更新之后。
+scheduled.length = 0
+captured = null
+page = makePage()
+page.useOfficialKeyboard = true
+let loadCalls = 0
+page.loadKnowledgeBase = function () { loadCalls++; return Promise.resolve(true) }
+const oldInput = makeNative([], '鲸鱼是鱼吗')
+page.$element = function () { return page.inputActive ? oldInput : null }
+page.sendMessage()
+check('normal send immediately displays message and thinking', page.messages[0]?.text === '鲸鱼是鱼吗' && page.thinking && !page.streamingText)
+check('normal send waits before loading knowledge', loadCalls === 0)
+check('normal send immediately removes stale native input', !page.inputActive && oldInput.value === '')
+const deferredStart = captured
+check('normal send arms deferred reply', typeof deferredStart === 'function')
+let buildReplyCalls = 0
+page.buildReply = function () { buildReplyCalls++ }
+deferredStart()
+check('deferred reply loads knowledge once', loadCalls === 1)
+await Promise.resolve()
+const replyBuildTimer = scheduled[scheduled.length - 1]
+check(
+  'reply waits for the UI to render before synchronous matching',
+  !!replyBuildTimer && typeof replyBuildTimer.delay === 'number' && replyBuildTimer.delay >= 120,
+  String(replyBuildTimer && replyBuildTimer.delay)
+)
+if (replyBuildTimer && typeof replyBuildTimer.fn === 'function') replyBuildTimer.fn()
+check('reply starts only after the render wait', buildReplyCalls === 1, String(buildReplyCalls))
+page.cancelOfficialInputClear()
+page.disarmReplyWatchdog()
+
 // 正常结束时收起看门狗
 captured = null
 page = makePage()
@@ -180,6 +230,7 @@ page.finishReply('好的', '规则')
 check('finishReply disarms watchdog', page.thinking === false && cleared > 0, 'cleared=' + cleared)
 
 globalThis.setTimeout = realSetTimeout
+globalThis.clearTimeout = realClearTimeout
 
 console.log('')
 console.log('Checks: ' + checks + ', failures: ' + failures.length)

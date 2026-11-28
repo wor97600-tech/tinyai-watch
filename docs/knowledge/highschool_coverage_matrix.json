@@ -1,0 +1,1001 @@
+[
+  {
+    "domain": "math",
+    "stage": "普通高中基础概念",
+    "module": "课程基础",
+    "conceptKey": "function",
+    "required": true,
+    "plannedEntryId": "k2-math-function-basic",
+    "sourceKey": "hs-math"
+  },
+  {
+    "domain": "physics",
+    "stage": "普通高中基础概念",
+    "module": "课程基础",
+    "conceptKey": "force",
+    "required": true,
+    "plannedEntryId": "k2-physics-force-basic",
+    "sourceKey": "hs-physics"
+  },
+  {
+    "domain": "chemistry",
+    "stage": "普通高中基础概念",
+    "module": "课程基础",
+    "conceptKey": "matter",
+    "required": true,
+    "plannedEntryId": "k2-chemistry-matter-basic",
+    "sourceKey": "hs-chemistry"
+  },
+  {
+    "domain": "biology",
+    "stage": "普通高中基础概念",
+    "module": "课程基础",
+    "conceptKey": "cell",
+    "required": true,
+    "plannedEntryId": "k2-biology-cell-basic",
+    "sourceKey": "hs-biology"
+  },
+  {
+    "domain": "geography",
+    "stage": "普通高中基础概念",
+    "module": "课程基础",
+    "conceptKey": "earth",
+    "required": true,
+    "plannedEntryId": "k2-geography-earth-system",
+    "sourceKey": "hs-geography"
+  },
+  {
+    "domain": "history",
+    "stage": "普通高中基础概念",
+    "module": "课程基础",
+    "conceptKey": "source",
+    "required": true,
+    "plannedEntryId": "k2-history-historical-source",
+    "sourceKey": "hs-history"
+  },
+  {
+    "domain": "politics",
+    "stage": "普通高中基础概念",
+    "module": "课程基础",
+    "conceptKey": "rule",
+    "required": true,
+    "plannedEntryId": "k2-politics-rule-of-law",
+    "sourceKey": "hs-politics"
+  },
+  {
+    "domain": "chinese",
+    "stage": "普通高中基础概念",
+    "module": "课程基础",
+    "conceptKey": "reading",
+    "required": true,
+    "plannedEntryId": "k2-chinese-reading-basic",
+    "sourceKey": "hs-chinese"
+  },
+  {
+    "domain": "english",
+    "stage": "普通高中基础概念",
+    "module": "课程基础",
+    "conceptKey": "sentence",
+    "required": true,
+    "plannedEntryId": "k2-english-sentence-basic",
+    "sourceKey": "hs-english"
+  },
+  {
+    "domain": "information",
+    "stage": "普通高中基础概念",
+    "module": "课程基础",
+    "conceptKey": "data",
+    "required": true,
+    "plannedEntryId": "k2-information-data-basic",
+    "sourceKey": "hs-information"
+  },
+  {
+    "domain": "technology",
+    "stage": "普通高中基础概念",
+    "module": "课程基础",
+    "conceptKey": "design",
+    "required": true,
+    "plannedEntryId": "k2-technology-design-basic",
+    "sourceKey": "hs-technology"
+  },
+  {
+    "domain": "music",
+    "stage": "普通高中基础概念",
+    "module": "课程基础",
+    "conceptKey": "rhythm",
+    "required": true,
+    "plannedEntryId": "k2-music-rhythm-basic",
+    "sourceKey": "hs-music"
+  },
+  {
+    "domain": "art",
+    "stage": "普通高中基础概念",
+    "module": "课程基础",
+    "conceptKey": "color",
+    "required": true,
+    "plannedEntryId": "k2-art-color-basic",
+    "sourceKey": "hs-art"
+  },
+  {
+    "domain": "pe",
+    "stage": "普通高中基础概念",
+    "module": "课程基础",
+    "conceptKey": "warmup",
+    "required": true,
+    "plannedEntryId": "k2-pe-warm-up",
+    "sourceKey": "hs-pe"
+  },
+  {
+    "domain": "labor",
+    "stage": "普通高中基础概念",
+    "module": "课程基础",
+    "conceptKey": "safety",
+    "required": true,
+    "plannedEntryId": "k2-labor-labor-safety",
+    "sourceKey": "hs-labor"
+  },
+  {
+    "domain": "practice",
+    "stage": "普通高中基础概念",
+    "module": "课程基础",
+    "conceptKey": "question",
+    "required": true,
+    "plannedEntryId": "k2-practice-research-question",
+    "sourceKey": "hs-practice"
+  },
+  {
+    "domain": "math",
+    "stage": "普通高中基础概念",
+    "module": "核心知识与规律",
+    "conceptKey": "subset",
+    "required": true,
+    "plannedEntryId": "k2-math-subset",
+    "sourceKey": "hs-math"
+  },
+  {
+    "domain": "math",
+    "stage": "普通高中基础概念",
+    "module": "核心知识与规律",
+    "conceptKey": "union-set",
+    "required": true,
+    "plannedEntryId": "k2-math-union-set",
+    "sourceKey": "hs-math"
+  },
+  {
+    "domain": "math",
+    "stage": "普通高中基础概念",
+    "module": "核心知识与规律",
+    "conceptKey": "intersection-set",
+    "required": true,
+    "plannedEntryId": "k2-math-intersection-set",
+    "sourceKey": "hs-math"
+  },
+  {
+    "domain": "math",
+    "stage": "普通高中基础概念",
+    "module": "核心知识与规律",
+    "conceptKey": "domain-function",
+    "required": true,
+    "plannedEntryId": "k2-math-domain-function",
+    "sourceKey": "hs-math"
+  },
+  {
+    "domain": "math",
+    "stage": "普通高中基础概念",
+    "module": "核心知识与规律",
+    "conceptKey": "range-function",
+    "required": true,
+    "plannedEntryId": "k2-math-range-function",
+    "sourceKey": "hs-math"
+  },
+  {
+    "domain": "math",
+    "stage": "普通高中基础概念",
+    "module": "核心知识与规律",
+    "conceptKey": "quadratic-function",
+    "required": true,
+    "plannedEntryId": "k2-math-quadratic-function",
+    "sourceKey": "hs-math"
+  },
+  {
+    "domain": "math",
+    "stage": "普通高中基础概念",
+    "module": "核心知识与规律",
+    "conceptKey": "monotonic-function",
+    "required": true,
+    "plannedEntryId": "k2-math-monotonic-function",
+    "sourceKey": "hs-math"
+  },
+  {
+    "domain": "math",
+    "stage": "普通高中基础概念",
+    "module": "核心知识与规律",
+    "conceptKey": "even-odd-function",
+    "required": true,
+    "plannedEntryId": "k2-math-even-odd-function",
+    "sourceKey": "hs-math"
+  },
+  {
+    "domain": "math",
+    "stage": "普通高中基础概念",
+    "module": "核心知识与规律",
+    "conceptKey": "inverse-function",
+    "required": true,
+    "plannedEntryId": "k2-math-inverse-function",
+    "sourceKey": "hs-math"
+  },
+  {
+    "domain": "math",
+    "stage": "普通高中基础概念",
+    "module": "核心知识与规律",
+    "conceptKey": "arithmetic-sequence",
+    "required": true,
+    "plannedEntryId": "k2-math-arithmetic-sequence",
+    "sourceKey": "hs-math"
+  },
+  {
+    "domain": "math",
+    "stage": "普通高中基础概念",
+    "module": "核心知识与规律",
+    "conceptKey": "geometric-sequence",
+    "required": true,
+    "plannedEntryId": "k2-math-geometric-sequence",
+    "sourceKey": "hs-math"
+  },
+  {
+    "domain": "math",
+    "stage": "普通高中基础概念",
+    "module": "核心知识与规律",
+    "conceptKey": "radian",
+    "required": true,
+    "plannedEntryId": "k2-math-radian",
+    "sourceKey": "hs-math"
+  },
+  {
+    "domain": "math",
+    "stage": "普通高中基础概念",
+    "module": "核心知识与规律",
+    "conceptKey": "trig-ratio",
+    "required": true,
+    "plannedEntryId": "k2-math-trig-ratio",
+    "sourceKey": "hs-math"
+  },
+  {
+    "domain": "math",
+    "stage": "普通高中基础概念",
+    "module": "核心知识与规律",
+    "conceptKey": "vector",
+    "required": true,
+    "plannedEntryId": "k2-math-vector",
+    "sourceKey": "hs-math"
+  },
+  {
+    "domain": "math",
+    "stage": "普通高中基础概念",
+    "module": "核心知识与规律",
+    "conceptKey": "dot-product",
+    "required": true,
+    "plannedEntryId": "k2-math-dot-product",
+    "sourceKey": "hs-math"
+  },
+  {
+    "domain": "math",
+    "stage": "普通高中基础概念",
+    "module": "核心知识与规律",
+    "conceptKey": "line-slope",
+    "required": true,
+    "plannedEntryId": "k2-math-line-slope",
+    "sourceKey": "hs-math"
+  },
+  {
+    "domain": "math",
+    "stage": "普通高中基础概念",
+    "module": "核心知识与规律",
+    "conceptKey": "circle-equation",
+    "required": true,
+    "plannedEntryId": "k2-math-circle-equation",
+    "sourceKey": "hs-math"
+  },
+  {
+    "domain": "math",
+    "stage": "普通高中基础概念",
+    "module": "核心知识与规律",
+    "conceptKey": "mean-stat",
+    "required": true,
+    "plannedEntryId": "k2-math-mean-stat",
+    "sourceKey": "hs-math"
+  },
+  {
+    "domain": "math",
+    "stage": "普通高中基础概念",
+    "module": "核心知识与规律",
+    "conceptKey": "variance-stat",
+    "required": true,
+    "plannedEntryId": "k2-math-variance-stat",
+    "sourceKey": "hs-math"
+  },
+  {
+    "domain": "math",
+    "stage": "普通高中基础概念",
+    "module": "核心知识与规律",
+    "conceptKey": "independent-events",
+    "required": true,
+    "plannedEntryId": "k2-math-independent-events",
+    "sourceKey": "hs-math"
+  },
+  {
+    "domain": "math",
+    "stage": "普通高中基础概念",
+    "module": "核心知识与规律",
+    "conceptKey": "conditional-probability",
+    "required": true,
+    "plannedEntryId": "k2-math-conditional-probability",
+    "sourceKey": "hs-math"
+  },
+  {
+    "domain": "math",
+    "stage": "普通高中基础概念",
+    "module": "核心知识与规律",
+    "conceptKey": "limit",
+    "required": true,
+    "plannedEntryId": "k2-math-limit",
+    "sourceKey": "hs-math"
+  },
+  {
+    "domain": "math",
+    "stage": "普通高中基础概念",
+    "module": "核心知识与规律",
+    "conceptKey": "derivative",
+    "required": true,
+    "plannedEntryId": "k2-math-derivative",
+    "sourceKey": "hs-math"
+  },
+  {
+    "domain": "math",
+    "stage": "普通高中基础概念",
+    "module": "核心知识与规律",
+    "conceptKey": "integral",
+    "required": true,
+    "plannedEntryId": "k2-math-integral",
+    "sourceKey": "hs-math"
+  },
+  {
+    "domain": "physics",
+    "stage": "普通高中基础概念",
+    "module": "核心知识与规律",
+    "conceptKey": "speed-scalar",
+    "required": true,
+    "plannedEntryId": "k2-physics-speed-scalar",
+    "sourceKey": "hs-physics"
+  },
+  {
+    "domain": "physics",
+    "stage": "普通高中基础概念",
+    "module": "核心知识与规律",
+    "conceptKey": "acceleration",
+    "required": true,
+    "plannedEntryId": "k2-physics-acceleration",
+    "sourceKey": "hs-physics"
+  },
+  {
+    "domain": "physics",
+    "stage": "普通高中基础概念",
+    "module": "核心知识与规律",
+    "conceptKey": "inertia",
+    "required": true,
+    "plannedEntryId": "k2-physics-inertia",
+    "sourceKey": "hs-physics"
+  },
+  {
+    "domain": "physics",
+    "stage": "普通高中基础概念",
+    "module": "核心知识与规律",
+    "conceptKey": "free-fall",
+    "required": true,
+    "plannedEntryId": "k2-physics-free-fall",
+    "sourceKey": "hs-physics"
+  },
+  {
+    "domain": "physics",
+    "stage": "普通高中基础概念",
+    "module": "核心知识与规律",
+    "conceptKey": "momentum",
+    "required": true,
+    "plannedEntryId": "k2-physics-momentum",
+    "sourceKey": "hs-physics"
+  },
+  {
+    "domain": "physics",
+    "stage": "普通高中基础概念",
+    "module": "核心知识与规律",
+    "conceptKey": "work-physics",
+    "required": true,
+    "plannedEntryId": "k2-physics-work-physics",
+    "sourceKey": "hs-physics"
+  },
+  {
+    "domain": "physics",
+    "stage": "普通高中基础概念",
+    "module": "核心知识与规律",
+    "conceptKey": "power-physics",
+    "required": true,
+    "plannedEntryId": "k2-physics-power-physics",
+    "sourceKey": "hs-physics"
+  },
+  {
+    "domain": "physics",
+    "stage": "普通高中基础概念",
+    "module": "核心知识与规律",
+    "conceptKey": "kinetic-energy",
+    "required": true,
+    "plannedEntryId": "k2-physics-kinetic-energy",
+    "sourceKey": "hs-physics"
+  },
+  {
+    "domain": "physics",
+    "stage": "普通高中基础概念",
+    "module": "核心知识与规律",
+    "conceptKey": "potential-energy",
+    "required": true,
+    "plannedEntryId": "k2-physics-potential-energy",
+    "sourceKey": "hs-physics"
+  },
+  {
+    "domain": "physics",
+    "stage": "普通高中基础概念",
+    "module": "核心知识与规律",
+    "conceptKey": "energy-conservation",
+    "required": true,
+    "plannedEntryId": "k2-physics-energy-conservation",
+    "sourceKey": "hs-physics"
+  },
+  {
+    "domain": "physics",
+    "stage": "普通高中基础概念",
+    "module": "核心知识与规律",
+    "conceptKey": "pressure",
+    "required": true,
+    "plannedEntryId": "k2-physics-pressure",
+    "sourceKey": "hs-physics"
+  },
+  {
+    "domain": "physics",
+    "stage": "普通高中基础概念",
+    "module": "核心知识与规律",
+    "conceptKey": "archimedes",
+    "required": true,
+    "plannedEntryId": "k2-physics-archimedes",
+    "sourceKey": "hs-physics"
+  },
+  {
+    "domain": "physics",
+    "stage": "普通高中基础概念",
+    "module": "核心知识与规律",
+    "conceptKey": "current",
+    "required": true,
+    "plannedEntryId": "k2-physics-current",
+    "sourceKey": "hs-physics"
+  },
+  {
+    "domain": "physics",
+    "stage": "普通高中基础概念",
+    "module": "核心知识与规律",
+    "conceptKey": "voltage",
+    "required": true,
+    "plannedEntryId": "k2-physics-voltage",
+    "sourceKey": "hs-physics"
+  },
+  {
+    "domain": "physics",
+    "stage": "普通高中基础概念",
+    "module": "核心知识与规律",
+    "conceptKey": "series-circuit",
+    "required": true,
+    "plannedEntryId": "k2-physics-series-circuit",
+    "sourceKey": "hs-physics"
+  },
+  {
+    "domain": "physics",
+    "stage": "普通高中基础概念",
+    "module": "核心知识与规律",
+    "conceptKey": "parallel-circuit",
+    "required": true,
+    "plannedEntryId": "k2-physics-parallel-circuit",
+    "sourceKey": "hs-physics"
+  },
+  {
+    "domain": "physics",
+    "stage": "普通高中基础概念",
+    "module": "核心知识与规律",
+    "conceptKey": "electric-power",
+    "required": true,
+    "plannedEntryId": "k2-physics-electric-power",
+    "sourceKey": "hs-physics"
+  },
+  {
+    "domain": "physics",
+    "stage": "普通高中基础概念",
+    "module": "核心知识与规律",
+    "conceptKey": "magnetic-field",
+    "required": true,
+    "plannedEntryId": "k2-physics-magnetic-field",
+    "sourceKey": "hs-physics"
+  },
+  {
+    "domain": "physics",
+    "stage": "普通高中基础概念",
+    "module": "核心知识与规律",
+    "conceptKey": "electromagnetic-induction",
+    "required": true,
+    "plannedEntryId": "k2-physics-electromagnetic-induction",
+    "sourceKey": "hs-physics"
+  },
+  {
+    "domain": "physics",
+    "stage": "普通高中基础概念",
+    "module": "核心知识与规律",
+    "conceptKey": "wave-frequency",
+    "required": true,
+    "plannedEntryId": "k2-physics-wave-frequency",
+    "sourceKey": "hs-physics"
+  },
+  {
+    "domain": "physics",
+    "stage": "普通高中基础概念",
+    "module": "核心知识与规律",
+    "conceptKey": "wavelength",
+    "required": true,
+    "plannedEntryId": "k2-physics-wavelength",
+    "sourceKey": "hs-physics"
+  },
+  {
+    "domain": "physics",
+    "stage": "普通高中基础概念",
+    "module": "核心知识与规律",
+    "conceptKey": "sound-vacuum",
+    "required": true,
+    "plannedEntryId": "k2-physics-sound-vacuum",
+    "sourceKey": "hs-physics"
+  },
+  {
+    "domain": "physics",
+    "stage": "普通高中基础概念",
+    "module": "核心知识与规律",
+    "conceptKey": "heat-temperature",
+    "required": true,
+    "plannedEntryId": "k2-physics-heat-temperature",
+    "sourceKey": "hs-physics"
+  },
+  {
+    "domain": "chemistry",
+    "stage": "普通高中基础概念",
+    "module": "核心知识与规律",
+    "conceptKey": "atom-structure",
+    "required": true,
+    "plannedEntryId": "k2-chemistry-atom-structure",
+    "sourceKey": "hs-chemistry"
+  },
+  {
+    "domain": "chemistry",
+    "stage": "普通高中基础概念",
+    "module": "核心知识与规律",
+    "conceptKey": "isotope",
+    "required": true,
+    "plannedEntryId": "k2-chemistry-isotope",
+    "sourceKey": "hs-chemistry"
+  },
+  {
+    "domain": "chemistry",
+    "stage": "普通高中基础概念",
+    "module": "核心知识与规律",
+    "conceptKey": "ion",
+    "required": true,
+    "plannedEntryId": "k2-chemistry-ion",
+    "sourceKey": "hs-chemistry"
+  },
+  {
+    "domain": "chemistry",
+    "stage": "普通高中基础概念",
+    "module": "核心知识与规律",
+    "conceptKey": "atomic-number",
+    "required": true,
+    "plannedEntryId": "k2-chemistry-atomic-number",
+    "sourceKey": "hs-chemistry"
+  },
+  {
+    "domain": "chemistry",
+    "stage": "普通高中基础概念",
+    "module": "核心知识与规律",
+    "conceptKey": "periodic-law",
+    "required": true,
+    "plannedEntryId": "k2-chemistry-periodic-law",
+    "sourceKey": "hs-chemistry"
+  },
+  {
+    "domain": "chemistry",
+    "stage": "普通高中基础概念",
+    "module": "核心知识与规律",
+    "conceptKey": "ionic-bond",
+    "required": true,
+    "plannedEntryId": "k2-chemistry-ionic-bond",
+    "sourceKey": "hs-chemistry"
+  },
+  {
+    "domain": "chemistry",
+    "stage": "普通高中基础概念",
+    "module": "核心知识与规律",
+    "conceptKey": "covalent-bond",
+    "required": true,
+    "plannedEntryId": "k2-chemistry-covalent-bond",
+    "sourceKey": "hs-chemistry"
+  },
+  {
+    "domain": "chemistry",
+    "stage": "普通高中基础概念",
+    "module": "核心知识与规律",
+    "conceptKey": "mole",
+    "required": true,
+    "plannedEntryId": "k2-chemistry-mole",
+    "sourceKey": "hs-chemistry"
+  },
+  {
+    "domain": "chemistry",
+    "stage": "普通高中基础概念",
+    "module": "核心知识与规律",
+    "conceptKey": "avogadro-constant",
+    "required": true,
+    "plannedEntryId": "k2-chemistry-avogadro-constant",
+    "sourceKey": "hs-chemistry"
+  },
+  {
+    "domain": "chemistry",
+    "stage": "普通高中基础概念",
+    "module": "核心知识与规律",
+    "conceptKey": "mass-conservation",
+    "required": true,
+    "plannedEntryId": "k2-chemistry-mass-conservation",
+    "sourceKey": "hs-chemistry"
+  },
+  {
+    "domain": "chemistry",
+    "stage": "普通高中基础概念",
+    "module": "核心知识与规律",
+    "conceptKey": "oxidation-reduction",
+    "required": true,
+    "plannedEntryId": "k2-chemistry-oxidation-reduction",
+    "sourceKey": "hs-chemistry"
+  },
+  {
+    "domain": "chemistry",
+    "stage": "普通高中基础概念",
+    "module": "核心知识与规律",
+    "conceptKey": "catalyst",
+    "required": true,
+    "plannedEntryId": "k2-chemistry-catalyst",
+    "sourceKey": "hs-chemistry"
+  },
+  {
+    "domain": "chemistry",
+    "stage": "普通高中基础概念",
+    "module": "核心知识与规律",
+    "conceptKey": "equilibrium",
+    "required": true,
+    "plannedEntryId": "k2-chemistry-equilibrium",
+    "sourceKey": "hs-chemistry"
+  },
+  {
+    "domain": "chemistry",
+    "stage": "普通高中基础概念",
+    "module": "核心知识与规律",
+    "conceptKey": "reaction-rate",
+    "required": true,
+    "plannedEntryId": "k2-chemistry-reaction-rate",
+    "sourceKey": "hs-chemistry"
+  },
+  {
+    "domain": "chemistry",
+    "stage": "普通高中基础概念",
+    "module": "核心知识与规律",
+    "conceptKey": "electrolyte",
+    "required": true,
+    "plannedEntryId": "k2-chemistry-electrolyte",
+    "sourceKey": "hs-chemistry"
+  },
+  {
+    "domain": "chemistry",
+    "stage": "普通高中基础概念",
+    "module": "核心知识与规律",
+    "conceptKey": "solution-concentration",
+    "required": true,
+    "plannedEntryId": "k2-chemistry-solution-concentration",
+    "sourceKey": "hs-chemistry"
+  },
+  {
+    "domain": "chemistry",
+    "stage": "普通高中基础概念",
+    "module": "核心知识与规律",
+    "conceptKey": "ph-scale",
+    "required": true,
+    "plannedEntryId": "k2-chemistry-ph-scale",
+    "sourceKey": "hs-chemistry"
+  },
+  {
+    "domain": "chemistry",
+    "stage": "普通高中基础概念",
+    "module": "核心知识与规律",
+    "conceptKey": "neutralization",
+    "required": true,
+    "plannedEntryId": "k2-chemistry-neutralization",
+    "sourceKey": "hs-chemistry"
+  },
+  {
+    "domain": "chemistry",
+    "stage": "普通高中基础概念",
+    "module": "核心知识与规律",
+    "conceptKey": "hydrocarbon",
+    "required": true,
+    "plannedEntryId": "k2-chemistry-hydrocarbon",
+    "sourceKey": "hs-chemistry"
+  },
+  {
+    "domain": "chemistry",
+    "stage": "普通高中基础概念",
+    "module": "核心知识与规律",
+    "conceptKey": "alkane",
+    "required": true,
+    "plannedEntryId": "k2-chemistry-alkane",
+    "sourceKey": "hs-chemistry"
+  },
+  {
+    "domain": "chemistry",
+    "stage": "普通高中基础概念",
+    "module": "核心知识与规律",
+    "conceptKey": "polymer",
+    "required": true,
+    "plannedEntryId": "k2-chemistry-polymer",
+    "sourceKey": "hs-chemistry"
+  },
+  {
+    "domain": "chemistry",
+    "stage": "普通高中基础概念",
+    "module": "核心知识与规律",
+    "conceptKey": "lab-safety-chem",
+    "required": true,
+    "plannedEntryId": "k2-chemistry-lab-safety-chem",
+    "sourceKey": "hs-chemistry"
+  },
+  {
+    "domain": "chemistry",
+    "stage": "普通高中基础概念",
+    "module": "核心知识与规律",
+    "conceptKey": "organic-functional",
+    "required": true,
+    "plannedEntryId": "k2-chemistry-organic-functional",
+    "sourceKey": "hs-chemistry"
+  },
+  {
+    "domain": "chemistry",
+    "stage": "普通高中基础概念",
+    "module": "核心知识与规律",
+    "conceptKey": "alcohol",
+    "required": true,
+    "plannedEntryId": "k2-chemistry-alcohol",
+    "sourceKey": "hs-chemistry"
+  },
+  {
+    "domain": "biology",
+    "stage": "普通高中基础概念",
+    "module": "核心知识与规律",
+    "conceptKey": "cell-membrane",
+    "required": true,
+    "plannedEntryId": "k2-biology-cell-membrane",
+    "sourceKey": "hs-biology"
+  },
+  {
+    "domain": "biology",
+    "stage": "普通高中基础概念",
+    "module": "核心知识与规律",
+    "conceptKey": "nucleus",
+    "required": true,
+    "plannedEntryId": "k2-biology-nucleus",
+    "sourceKey": "hs-biology"
+  },
+  {
+    "domain": "biology",
+    "stage": "普通高中基础概念",
+    "module": "核心知识与规律",
+    "conceptKey": "cytoplasm",
+    "required": true,
+    "plannedEntryId": "k2-biology-cytoplasm",
+    "sourceKey": "hs-biology"
+  },
+  {
+    "domain": "biology",
+    "stage": "普通高中基础概念",
+    "module": "核心知识与规律",
+    "conceptKey": "mitochondria",
+    "required": true,
+    "plannedEntryId": "k2-biology-mitochondria",
+    "sourceKey": "hs-biology"
+  },
+  {
+    "domain": "biology",
+    "stage": "普通高中基础概念",
+    "module": "核心知识与规律",
+    "conceptKey": "chloroplast",
+    "required": true,
+    "plannedEntryId": "k2-biology-chloroplast",
+    "sourceKey": "hs-biology"
+  },
+  {
+    "domain": "biology",
+    "stage": "普通高中基础概念",
+    "module": "核心知识与规律",
+    "conceptKey": "ribosome",
+    "required": true,
+    "plannedEntryId": "k2-biology-ribosome",
+    "sourceKey": "hs-biology"
+  },
+  {
+    "domain": "biology",
+    "stage": "普通高中基础概念",
+    "module": "核心知识与规律",
+    "conceptKey": "enzyme-bio",
+    "required": true,
+    "plannedEntryId": "k2-biology-enzyme-bio",
+    "sourceKey": "hs-biology"
+  },
+  {
+    "domain": "biology",
+    "stage": "普通高中基础概念",
+    "module": "核心知识与规律",
+    "conceptKey": "atp",
+    "required": true,
+    "plannedEntryId": "k2-biology-atp",
+    "sourceKey": "hs-biology"
+  },
+  {
+    "domain": "biology",
+    "stage": "普通高中基础概念",
+    "module": "核心知识与规律",
+    "conceptKey": "cell-respiration",
+    "required": true,
+    "plannedEntryId": "k2-biology-cell-respiration",
+    "sourceKey": "hs-biology"
+  },
+  {
+    "domain": "biology",
+    "stage": "普通高中基础概念",
+    "module": "核心知识与规律",
+    "conceptKey": "mitosis",
+    "required": true,
+    "plannedEntryId": "k2-biology-mitosis",
+    "sourceKey": "hs-biology"
+  },
+  {
+    "domain": "biology",
+    "stage": "普通高中基础概念",
+    "module": "核心知识与规律",
+    "conceptKey": "meiosis",
+    "required": true,
+    "plannedEntryId": "k2-biology-meiosis",
+    "sourceKey": "hs-biology"
+  },
+  {
+    "domain": "biology",
+    "stage": "普通高中基础概念",
+    "module": "核心知识与规律",
+    "conceptKey": "chromosome",
+    "required": true,
+    "plannedEntryId": "k2-biology-chromosome",
+    "sourceKey": "hs-biology"
+  },
+  {
+    "domain": "biology",
+    "stage": "普通高中基础概念",
+    "module": "核心知识与规律",
+    "conceptKey": "mutation",
+    "required": true,
+    "plannedEntryId": "k2-biology-mutation",
+    "sourceKey": "hs-biology"
+  },
+  {
+    "domain": "biology",
+    "stage": "普通高中基础概念",
+    "module": "核心知识与规律",
+    "conceptKey": "dominant-recessive",
+    "required": true,
+    "plannedEntryId": "k2-biology-dominant-recessive",
+    "sourceKey": "hs-biology"
+  },
+  {
+    "domain": "biology",
+    "stage": "普通高中基础概念",
+    "module": "核心知识与规律",
+    "conceptKey": "natural-selection",
+    "required": true,
+    "plannedEntryId": "k2-biology-natural-selection",
+    "sourceKey": "hs-biology"
+  },
+  {
+    "domain": "biology",
+    "stage": "普通高中基础概念",
+    "module": "核心知识与规律",
+    "conceptKey": "homeostasis",
+    "required": true,
+    "plannedEntryId": "k2-biology-homeostasis",
+    "sourceKey": "hs-biology"
+  },
+  {
+    "domain": "biology",
+    "stage": "普通高中基础概念",
+    "module": "核心知识与规律",
+    "conceptKey": "immune-system",
+    "required": true,
+    "plannedEntryId": "k2-biology-immune-system",
+    "sourceKey": "hs-biology"
+  },
+  {
+    "domain": "biology",
+    "stage": "普通高中基础概念",
+    "module": "核心知识与规律",
+    "conceptKey": "biodiversity",
+    "required": true,
+    "plannedEntryId": "k2-biology-biodiversity",
+    "sourceKey": "hs-biology"
+  },
+  {
+    "domain": "biology",
+    "stage": "普通高中基础概念",
+    "module": "核心知识与规律",
+    "conceptKey": "population",
+    "required": true,
+    "plannedEntryId": "k2-biology-population",
+    "sourceKey": "hs-biology"
+  },
+  {
+    "domain": "biology",
+    "stage": "普通高中基础概念",
+    "module": "核心知识与规律",
+    "conceptKey": "ecosystem-energy",
+    "required": true,
+    "plannedEntryId": "k2-biology-ecosystem-energy",
+    "sourceKey": "hs-biology"
+  },
+  {
+    "domain": "biology",
+    "stage": "普通高中基础概念",
+    "module": "核心知识与规律",
+    "conceptKey": "allele",
+    "required": true,
+    "plannedEntryId": "k2-biology-allele",
+    "sourceKey": "hs-biology"
+  },
+  {
+    "domain": "biology",
+    "stage": "普通高中基础概念",
+    "module": "核心知识与规律",
+    "conceptKey": "genotype-phenotype",
+    "required": true,
+    "plannedEntryId": "k2-biology-genotype-phenotype",
+    "sourceKey": "hs-biology"
+  },
+  {
+    "domain": "biology",
+    "stage": "普通高中基础概念",
+    "module": "核心知识与规律",
+    "conceptKey": "transcription",
+    "required": true,
+    "plannedEntryId": "k2-biology-transcription",
+    "sourceKey": "hs-biology"
+  },
+  {
+    "domain": "biology",
+    "stage": "普通高中基础概念",
+    "module": "核心知识与规律",
+    "conceptKey": "translation",
+    "required": true,
+    "plannedEntryId": "k2-biology-translation",
+    "sourceKey": "hs-biology"
+  }
+]

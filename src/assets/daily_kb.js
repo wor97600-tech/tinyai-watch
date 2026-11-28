@@ -18,7 +18,7 @@ export default [
     id: 'd-eat-breakfast',
     question: '早餐吃什么',
     answer: '有蛋白质有主食就行：鸡蛋加粥、牛奶加面包，都算合格。',
-    keywords: ['早餐', '早上', '吃什么'],
+    keywords: ['早餐', '早上', '吃什么', '早餐吃点什么'],
   },
   {
     id: 'd-eat-late',
@@ -106,7 +106,7 @@ export default [
     id: 'd-cant-sleep',
     question: '睡不着怎么办',
     answer: '别硬躺，起来喝口水、把屏幕放下，困了再回床上。',
-    keywords: ['睡不着', '失眠', '睡眠'],
+    keywords: ['睡不着', '失眠', '睡眠', '快速入睡'],
   },
   {
     id: 'd-stay-up',
@@ -252,9 +252,9 @@ export default [
   },
   {
     id: 'd-focus',
-    question: '注意力不集中怎么办',
+    question: '做事总走神怎么办',
     answer: '把手机放远，一次只做一件事，二十五分钟休息五分钟。',
-    keywords: ['注意力', '专注', '分心'],
+    keywords: ['注意力', '专注', '分心', '走神'],
   },
   {
     id: 'd-learn-code',
@@ -358,7 +358,7 @@ export default [
   },
   {
     id: 'd-long-distance',
-    question: '异地恋怎么维持',
+    question: '恋人异地怎么保持感情',
     answer: '固定联系节奏，分享具体的小事，比每天问“在干嘛”更稳。',
     keywords: ['异地', '恋爱', '感情'],
   },

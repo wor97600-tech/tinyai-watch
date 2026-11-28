@@ -1,0 +1,29 @@
+[
+  {
+    "sourceKey": "world-athletics-records",
+    "publisher": "World Athletics",
+    "title": "100 Metres - men - senior - all-time toplist",
+    "version": "在线纪录列表",
+    "checkedAt": "2026-11-28",
+    "scope": "男子户外田径100米正式成绩与世界纪录口径",
+    "url": "https://worldathletics.org/records/all-time-toplists/sprints/100-metres/outdoor/men/senior"
+  },
+  {
+    "sourceKey": "smithsonian-zoo-animals",
+    "publisher": "Smithsonian National Zoo and Conservation Biology Institute",
+    "title": "Animals",
+    "version": "在线动物科普页面",
+    "checkedAt": "2026-11-28",
+    "scope": "动物分类、形态与生活习性基础；条目按物种表述，不外推至所有种类",
+    "url": "https://nationalzoo.si.edu/animals"
+  },
+  {
+    "sourceKey": "openstax-biology",
+    "publisher": "OpenStax, Rice University",
+    "title": "Biology 2e",
+    "version": "2e",
+    "checkedAt": "2026-11-28",
+    "scope": "植物结构、生态关系和基础生物学概念；内容以原创短答概括",
+    "url": "https://openstax.org/details/books/biology-2e"
+  }
+]

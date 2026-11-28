@@ -18,6 +18,7 @@ const header = [
   'const knowledgeEntries = []',
   'const dailyEntries = []',
   'const dailyExtraEntries = []',
+  'const kbV2Entries = []',
   'class SimpleKnowledgeBase { constructor() {} }',
   'class ReplyEngine { constructor() {} cancelStream() {} }',
   'const isCreativeRequest = function () { return false }',

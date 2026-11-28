@@ -1,20 +1,23 @@
 {
   "name": "tinyai-watch",
-  "version": "1.0.0",
+  "version": "1.1.0",
   "private": true,
   "type": "module",
   "description": "TinyAI — 完全离线的 BlueOS 手表中文对话 + 26 键离线拼音输入法",
   "scripts": {
     "test": "npm run check",
-    "check": "node ./tests/node_check.js && node ./tests/char_model_check.js && node ./tests/quantized_model_check.js && node ./tests/knowledge_base_check.js && node ./tests/hybrid_qa_check.js && node ./tests/reply_engine_check.js && node ./tests/benchmark_check.js && node ./tests/pinyin_engine_check.js && node ./tests/keyboard_ux_check.js && node ./tests/keyboard_flow_check.js && node ./tests/keyboard_layout_check.js && node ./tests/official_input_check.js && node ./tests/lifecycle_check.js",
+    "check": "node ./tests/node_check.js && node ./tests/char_model_check.js && node ./tests/quantized_model_check.js && npm run check:kb && node ./tests/hybrid_qa_check.js && node ./tests/reply_engine_check.js && node ./tests/benchmark_check.js && node ./tests/pinyin_engine_check.js && node ./tests/keyboard_ux_check.js && node ./tests/keyboard_flow_check.js && node ./tests/keyboard_layout_check.js && node ./tests/official_input_check.js && node ./tests/lifecycle_check.js",
     "check:char": "node ./tests/char_model_check.js",
     "check:quant": "node ./tests/quantized_model_check.js",
-    "check:kb": "node ./tests/knowledge_base_check.js",
+    "check:kb": "node ./tests/kb_manifest_check.js && node ./tests/kb_build_manifest_check.js && node ./tests/kb_router_capacity_check.js && node ./tests/knowledge_base_check.js && node ./tests/kb_2500_release_check.js && node ./tests/kb_1500_check.js && node ./tests/kb_category_check.js && node ./tests/kb_fallback_check.js && node ./tests/kb_nature_coverage_check.js && node ./tests/kb_binary_check.js && node --expose-gc ./tests/kb_memory_check.js && node ./tests/kb_runtime_dependency_check.js && node ./tests/kb_benchmark_report.js",
+    "check:kb-corpus": "node ./tests/kb_corpus_manifest_check.js && node ./tests/kb_corpus_check.js",
     "check:qa": "node ./tests/hybrid_qa_check.js",
     "check:reply": "node ./tests/reply_engine_check.js",
     "check:bench": "node ./tests/benchmark_check.js",
     "check:kbd": "node ./tests/keyboard_ux_check.js && node ./tests/keyboard_layout_check.js && node ./tests/keyboard_flow_check.js",
-    "build:pinyin": "node ./scripts/build_pinyin_dict.mjs"
+    "build:pinyin": "node ./scripts/build_pinyin_dict.mjs",
+    "build:kb": "node ./scripts/build_kb_1500.mjs",
+    "check:full": "npm run check && npm run check:kb-corpus"
   },
   "repository": {
     "type": "git",

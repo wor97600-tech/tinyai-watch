@@ -1,9 +1,11 @@
 import entries from '../src/assets/knowledge_base.js'
 import dailyEntries from '../src/assets/daily_kb.js'
 import dailyExtraEntries from '../src/assets/daily_kb_extra.js'
+import kbV2Entries from '../src/assets/kb/index.js'
 import { chatIntents } from '../src/assets/chat_patterns.js'
 import { KnowledgeBase } from '../src/ai/knowledge_base.js'
 import { SimpleKnowledgeBase } from '../src/ai/simple_kb.js'
+import { packEntries } from '../scripts/kb_pack.mjs'
 import { ReplyEngine, isCreativeRequest, extractCreativeSeed } from '../src/ai/reply_engine.js'
 import { loadFromJsonText } from '../src/ai/model_loader.js'
 import { CharPredictor } from '../src/ai/char_predictor.js'
@@ -273,7 +275,8 @@ const chatCases = [
   ['我好饿', 'chat'],
   ['给我讲个笑话', 'chat'],
   ['我失恋了', 'chat'],
-  ['你能帮我写作业吗', 'chat'],
+  ['你能帮我写作业吗', 'homework'],
+  ['帮我做这道数学题：2x+1=5', 'homework'],
   ['苹果好吃吗', 'chat'],
   ['你觉得我帅吗', 'chat'],
   ['随便聊聊', 'chat'],
@@ -504,7 +507,8 @@ for (const intent of chatIntents) {
     continue
   }
   const reply = engine.reply(sample)
-  if (reply.mode !== 'chat') {
+  const expectedMode = intent.id === 'homework' ? 'homework' : 'chat'
+  if (reply.mode !== expectedMode) {
     intentMiss++
     console.log('      INTENT MISS: ' + intent.id + ' <- ' + sample + ' got ' + reply.mode)
   }
@@ -659,7 +663,7 @@ const neuralNoModel = await new Promise(function (resolve) {
 check('neural mode without model is polite', neuralNoModel.mode === 'char_wait', neuralNoModel.meta)
 
 // 12. 日常话题知识库（项目条目 + 日常条目合并）
-const dailyKb = new KnowledgeBase(entries.concat(dailyEntries, dailyExtraEntries))
+const dailyKb = new KnowledgeBase(entries.concat(dailyEntries, dailyExtraEntries, kbV2Entries))
 const dailyEngine = new ReplyEngine({
   knowledgeBase: dailyKb,
   predictor: predictor,
@@ -690,7 +694,9 @@ check(
 check('daily kb keeps project answers', dailyEngine.reply('模型多大').entryId === 'model-size')
 
 // 13. 轻量检索（手表上实际使用的那套，不建索引）
-const simpleKb = new SimpleKnowledgeBase(entries.concat(dailyEntries, dailyExtraEntries))
+const simpleKb = new SimpleKnowledgeBase(
+  packEntries(entries.concat(dailyEntries, dailyExtraEntries, kbV2Entries))
+)
 const simpleEngine = new ReplyEngine({
   knowledgeBase: simpleKb,
   predictor: predictor,
@@ -839,10 +845,12 @@ toyNoModel.setToyMode(true)
 check('toy without model is polite', toyNoModel.reply('你好').mode === 'char_wait', toyNoModel.reply('你好').meta)
 
 // 15. 问句未命中：老实说没存，不硬接龙说梦话
-const honestEngine = createEngine()
-const q1 = honestEngine.reply('水的化学式')
-check('unknown question says it is not stored', q1.mode === 'unknown', q1.mode + ' ' + q1.text)
-check('unknown question is not a dream sentence', hasDeadEnd(q1.text) === '' && q1.text.indexOf('实验性') < 0, q1.text)
+const q1 = simpleEngine.reply('水的化学式')
+check('basic science question is stored', q1.entryId === 'k2-science-water-molecule', q1.mode + ' ' + (q1.entryId || '-'))
+check('basic science answer is substantive', hasDeadEnd(q1.text) === '' && q1.text.indexOf('实验性') < 0, q1.text)
+const recordReply = simpleEngine.reply('世界最快的人是谁')
+check('fastest-person wording is scoped to the 100m record', recordReply.entryId === 'k2-facts-mens-100m-record-holder', (recordReply.entryId || '-') + ' ' + recordReply.text)
+check('record answer includes date and event scope', recordReply.text.indexOf('截至2026-11-28') >= 0 && recordReply.text.indexOf('男子100米') >= 0, recordReply.text)
 const q2 = createEngine().reply('北京是哪个国家的')
 check('second unknown question also honest', q2.mode === 'unknown', q2.mode + ' ' + q2.text)
 const stmtReply = createEngine().reply('地铁太挤了')
